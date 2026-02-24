@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}Privacy Compliance - SmartID{% endblock %}
+{% block sb_privacy %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-shield-check"></i> Privacy Compliance</h1>
+    <p>Digital Consent Form status for all active users (FR-2, FR-11, FR-12).</p>
+</div>
+
+{# ── Summary Cards ── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
+                    <div class="mc-title">Total<br>Users</div>
+                </div>
+            </div>
+            <div class="mc-value">{{ total_users }}</div>
+            <div class="mc-footer"><span>Active accounts</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon success"><i class="bi bi-check-circle-fill"></i></div>
+                    <div class="mc-title">Consent<br>Signed</div>
+                </div>
+                <span class="mc-badge success">OK</span>
+            </div>
+            <div class="mc-value">{{ consented_count }}</div>
+            <div class="mc-footer"><span>{{ compliance_pct }}% compliant</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill success" style="width:{{ compliance_pct }}%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon danger"><i class="bi bi-exclamation-circle-fill"></i></div>
+                    <div class="mc-title">Missing<br>Consent</div>
+                </div>
+                {% if missing_count %}<span class="mc-badge danger">Action</span>{% endif %}
+            </div>
+            <div class="mc-value">{{ missing_count }}</div>
+            <div class="mc-footer"><span>Require follow-up</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill danger" style="width:{% if total_users %}{% widthratio missing_count total_users 100 %}{% else %}0{% endif %}%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon info"><i class="bi bi-pie-chart-fill"></i></div>
+                    <div class="mc-title">Compliance<br>Rate</div>
+                </div>
+            </div>
+            <div class="mc-value">{{ compliance_pct }}%</div>
+            <div class="mc-footer"><span>Overall score</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill info" style="width:{{ compliance_pct }}%"></div></div>
+        </div>
+    </div>
+</div>
+
+{# ── User Consent Table ── #}
+<div class="card">
+    <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--color-border)">
+        <h5 style="margin:0;color:var(--color-text-primary)"><i class="bi bi-clipboard-check" style="color:var(--color-primary);margin-right:.5rem"></i>User Consent Details</h5>
+    </div>
+    <div style="padding:0 1.5rem 1.5rem">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Biometric</th>
+                        <th>RFID</th>
+                        <th>Data Retention</th>
+                        <th>Signed On</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:.6rem">
+                                <div style="width:34px;height:34px;border-radius:50%;background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem">{{ u.first_name|first }}{{ u.last_name|first }}</div>
+                                <div>
+                                    <div style="font-weight:600;color:var(--color-text-primary)">{{ u.get_full_name }}</div>
+                                    <small style="color:var(--color-text-muted)">{{ u.institutional_id }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="role-badge {{ u.role }}">{{ u.get_role_display }}</span></td>
+                        {% if u.consent %}
+                        <td>
+                            {% if u.consent.biometric_consent %}
+                            <span style="color:var(--color-success)"><i class="bi bi-check-circle-fill"></i></span>
+                            {% else %}
+                            <span style="color:var(--color-danger)"><i class="bi bi-x-circle-fill"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.consent.rfid_consent %}
+                            <span style="color:var(--color-success)"><i class="bi bi-check-circle-fill"></i></span>
+                            {% else %}
+                            <span style="color:var(--color-danger)"><i class="bi bi-x-circle-fill"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.consent.data_retention_ack %}
+                            <span style="color:var(--color-success)"><i class="bi bi-check-circle-fill"></i></span>
+                            {% else %}
+                            <span style="color:var(--color-danger)"><i class="bi bi-x-circle-fill"></i></span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--color-text-muted);font-size:.85rem">{{ u.consent.accepted_at|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-check-lg"></i> Signed</span>
+                        </td>
+                        {% else %}
+                        <td colspan="3" style="text-align:center;color:var(--color-text-muted);font-style:italic">No consent record</td>
+                        <td style="color:var(--color-text-muted)">—</td>
+                        <td>
+                            <span class="status-badge" style="background:var(--color-danger-bg);color:var(--color-danger)"><i class="bi bi-exclamation-lg"></i> Missing</span>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

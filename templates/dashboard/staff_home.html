@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - SmartID{% endblock %}
+{% block sb_dashboard %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-grid-1x2"></i> Dashboard</h1>
+    <p>Welcome back, <strong>{{ user.get_full_name }}</strong>. Here's your campus overview.</p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
+                    <div class="mc-title">Total<br>Users</div>
+                </div>
+                <span class="mc-badge info">All</span>
+            </div>
+            <div class="mc-value">{{ total_users }}</div>
+            <div class="mc-footer"><span>Registered &amp; active</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon success"><i class="bi bi-mortarboard-fill"></i></div>
+                    <div class="mc-title">Total<br>Students</div>
+                </div>
+                <span class="mc-badge success">Active</span>
+            </div>
+            <div class="mc-value">{{ total_students }}</div>
+            <div class="mc-footer"><span>Enrolled students</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill success" style="width:{% widthratio total_students total_users 100 %}%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
+                    <div class="mc-title">Today's<br>Attendance</div>
+                </div>
+                <span class="mc-badge info">Today</span>
+            </div>
+            <div class="mc-value">{{ today_attendance }}</div>
+            <div class="mc-footer"><span>Records marked today</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if today_attendance %}65{% else %}0{% endif %}%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon warning"><i class="bi bi-calendar2-check"></i></div>
+                    <div class="mc-title">Active<br>Sessions</div>
+                </div>
+                {% if active_sessions > 0 %}<span class="mc-badge success">Live</span>{% else %}<span class="mc-badge warning">None</span>{% endif %}
+            </div>
+            <div class="mc-value">{{ active_sessions }}</div>
+            <div class="mc-footer"><span>Currently running</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill warning" style="width:{% if active_sessions %}50{% else %}0{% endif %}%"></div></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

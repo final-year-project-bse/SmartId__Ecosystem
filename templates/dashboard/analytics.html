@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}Analytics - SmartID{% endblock %}
+{% block sb_analytics %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-activity"></i> Analytics Dashboard</h1>
+    <p>System-wide performance metrics for the last 7 days.</p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
+                    <div class="mc-title">Total<br>Users</div>
+                </div>
+                <span class="mc-badge info">All Time</span>
+            </div>
+            <div class="mc-value">{{ total_users }}</div>
+            <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon success"><i class="bi bi-mortarboard-fill"></i></div>
+                    <div class="mc-title">Total<br>Students</div>
+                </div>
+                <span class="mc-badge success">Active</span>
+            </div>
+            <div class="mc-value">{{ total_students }}</div>
+            <div class="mc-bar"><div class="mc-bar-fill success" style="width:{% widthratio total_students total_users 100 %}%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
+                    <div class="mc-title">Attendance<br>(7 days)</div>
+                </div>
+                <span class="mc-badge info">Weekly</span>
+            </div>
+            <div class="mc-value">{{ attendance_count }}</div>
+            <div class="mc-bar"><div class="mc-bar-fill info" style="width:75%"></div></div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon danger"><i class="bi bi-shield-exclamation"></i></div>
+                    <div class="mc-title">Failed<br>Logins</div>
+                </div>
+                {% if failed_logins > 5 %}<span class="mc-badge danger">Alert</span>{% else %}<span class="mc-badge success">Normal</span>{% endif %}
+            </div>
+            <div class="mc-value">{{ failed_logins }}</div>
+            <div class="mc-bar"><div class="mc-bar-fill danger" style="width:{% if failed_logins > 0 %}40{% else %}0{% endif %}%"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-6">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon info"><i class="bi bi-person-workspace"></i></div>
+                    <div class="mc-title">Total Professors</div>
+                </div>
+                <span class="mc-badge info">Staff</span>
+            </div>
+            <div class="mc-value">{{ total_professors }}</div>
+            <div class="mc-footer"><span>Faculty members</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% widthratio total_professors total_users 100 %}%"></div></div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon success"><i class="bi bi-check-circle-fill"></i></div>
+                    <div class="mc-title">Successful Logins (7d)</div>
+                </div>
+                <span class="mc-badge success">Healthy</span>
+            </div>
+            <div class="mc-value">{{ successful_logins }}</div>
+            <div class="mc-footer"><span>Last 7 days</span></div>
+            <div class="mc-bar"><div class="mc-bar-fill success" style="width:85%"></div></div>
+        </div>
+    </div>
+</div>
+
+{# ── Chart.js Visualizations ── #}
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-7">
+        <div class="card">
+            <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+                <h6 style="margin:0;font-weight:700;color:var(--color-text-primary)"><i class="bi bi-graph-up" style="color:var(--color-primary);margin-right:.4rem"></i>7-Day Attendance Trend</h6>
+            </div>
+            <div style="padding:1.25rem">
+                <canvas id="trendChart" style="max-height:280px"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-5">
+        <div class="card">
+            <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+                <h6 style="margin:0;font-weight:700;color:var(--color-text-primary)"><i class="bi bi-pin-map" style="color:var(--color-primary);margin-right:.4rem"></i>Attendance by Location</h6>
+            </div>
+            <div style="padding:1.25rem">
+                <canvas id="locationChart" style="max-height:280px"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="section-title"><i class="bi bi-journal-text"></i> Recent Access Logs</div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>User</th><th>Location</th><th>Time</th><th class="d-none d-sm-table-cell">Method</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for log in access_logs %}
+                    <tr>
+                        <td><strong>{{ log.user.institutional_id|default:"Unknown" }}</strong></td>
+                        <td>{{ log.location.name }}</td>
+                        <td style="white-space:nowrap">{{ log.accessed_at|date:"M d, H:i" }}</td>
+                        <td class="d-none d-sm-table-cell"><span class="role-badge professor" style="text-transform:uppercase;font-size:0.65rem">{{ log.auth_method|default:"—" }}</span></td>
+                        <td><span class="status-badge"><span class="status-dot {% if log.success %}active{% else %}inactive{% endif %}"></span><span class="d-none d-sm-inline">{% if log.success %}Success{% else %}Failed{% endif %}</span></span></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i class="bi bi-inbox"></i></div><p>No access logs in the last 7 days.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Chart.js ── #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const primary = '#6C4EEB';
+const primaryLight = 'rgba(108,78,235,.15)';
+const success = '#22C55E';
+const info = '#3B82F6';
+const warning = '#F59E0B';
+const danger = '#EF4444';
+
+// 7-Day Attendance Trend
+const labels7d = {{ daily_labels|safe }};
+const data7d = {{ daily_data|safe }};
+
+new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+        labels: labels7d,
+        datasets: [{
+            label: 'Attendance Records',
+            data: data7d,
+            borderColor: primary,
+            backgroundColor: primaryLight,
+            fill: true,
+            tension: .35,
+            pointRadius: 4,
+            pointBackgroundColor: primary,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+            x: { grid: { display: false }, ticks: { color: '#6B7280' } }
+        }
+    }
+});
+
+// Attendance by Location
+const locationLabels = {{ location_labels|safe }};
+const locationData = {{ location_data|safe }};
+const locationColors = [primary, success, info, warning, danger, '#9333EA'];
+
+new Chart(document.getElementById('locationChart'), {
+    type: 'doughnut',
+    data: {
+        labels: locationLabels,
+        datasets: [{
+            data: locationData,
+            backgroundColor: locationColors,
+            borderWidth: 2,
+            borderColor: '#fff',
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: '#1F2937', padding: 12, font: { size: 11 } } } }
+    }
+});
+</script>
+{% endblock %}

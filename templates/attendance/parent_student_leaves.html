@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}{{ student.get_full_name }}'s Leave Requests - SmartID{% endblock %}
+{% block sb_parent_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+    <div>
+        <h1><i class="bi bi-journal-x"></i> {{ student.first_name }}'s Leave Requests</h1>
+        <p>Status of leave/absence requests for <strong>{{ student.get_full_name }}</strong>.</p>
+    </div>
+    <a href="{% url 'attendance:parent_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="section-title"><i class="bi bi-list-ul"></i> Leave Requests</div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>Date</th><th>Course</th><th>Reason</th><th>Status</th><th>Reviewed By</th></tr></thead>
+                <tbody>
+                    {% for l in leaves %}
+                    <tr>
+                        <td style="white-space:nowrap">{{ l.date|date:"M d, Y" }}</td>
+                        <td><strong>{{ l.course.code }}</strong></td>
+                        <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.reason }}</td>
+                        <td>
+                            {% if l.status == 'pending' %}
+                            <span class="mc-badge warning">Pending</span>
+                            {% elif l.status == 'approved' %}
+                            <span class="mc-badge success">Approved</span>
+                            {% else %}
+                            <span class="mc-badge danger">Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td>{% if l.reviewed_by %}{{ l.reviewed_by.get_full_name }}{% else %}<span style="color:var(--color-text-muted)">—</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5"><div class="empty-state" style="padding:2rem 1rem"><div class="empty-icon" style="font-size:2rem"><i class="bi bi-inbox"></i></div><p>No leave requests submitted.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

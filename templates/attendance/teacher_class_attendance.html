@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}{{ course.code }} Attendance - SmartID{% endblock %}
+{% block sb_teach_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-list-check"></i> {{ course.code }} — Attendance</h1>
+    <p>{{ course.name }} &middot; {{ total_enrolled }} enrolled students</p>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
+    <a href="{% url 'attendance:teacher_roster' course.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-people"></i> Student Roster</a>
+    <a href="{% url 'attendance:teacher_export' course.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-download"></i> Export CSV</a>
+    <a href="{% url 'attendance:teacher_notify' course.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-megaphone"></i> Send Notice</a>
+    <a href="{% url 'attendance:teacher_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="card">
+    <div style="padding:0 1.25rem 1.25rem">
+        {% if sessions %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Date</th><th>Time</th><th>Location</th><th>Students Present</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for s in sessions %}
+                    <tr>
+                        <td style="font-weight:600;color:var(--color-text-primary);white-space:nowrap">{{ s.started_at|date:"M d, Y" }}</td>
+                        <td style="color:var(--color-text-secondary);white-space:nowrap">{{ s.started_at|date:"H:i" }}{% if s.ended_at %} – {{ s.ended_at|date:"H:i" }}{% endif %}</td>
+                        <td style="color:var(--color-text-secondary)">{{ s.location.name }}</td>
+                        <td>
+                            <span style="font-weight:700;color:var(--color-primary)">{{ s.student_count }}</span>
+                            <span style="color:var(--color-text-muted)">/ {{ total_enrolled }}</span>
+                        </td>
+                        <td>
+                            {% if s.ended_at %}
+                            <span class="status-badge" style="background:var(--color-border-light);color:var(--color-text-muted)">Ended</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> Live</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-calendar-x" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+            <h6 style="color:var(--color-text-primary)">No sessions yet</h6>
+            <p style="color:var(--color-text-muted)">Start an attendance session for this course.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% block title %}Parent Dashboard - SmartID{% endblock %}
+{% block sb_dashboard %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-house-heart"></i> Parent Dashboard</h1>
+    <p>Welcome, <strong>{{ user.get_full_name }}</strong>. Choose an action below to get started.</p>
+</div>
+
+<div class="shortcut-section">
+    <h2 class="shortcut-heading">What do you want to do?</h2>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-6 col-lg-4">
+            <a href="{% url 'attendance:parent_dashboard' %}" class="card shortcut-card shortcut-card-primary">
+                <div class="card-body">
+                    <div class="shortcut-icon"><i class="bi bi-house-heart"></i></div>
+                    <div class="shortcut-title">View My Children</div>
+                    <div class="shortcut-desc">See attendance and stats for each child</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+            <a href="{% url 'notifications:list' %}" class="card shortcut-card">
+                <div class="card-body">
+                    <div class="shortcut-icon" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-bell"></i></div>
+                    <div class="shortcut-title">Notifications</div>
+                    <div class="shortcut-desc">View your notifications</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-6 col-lg-4">
+            <a href="{% url 'users:profile' %}" class="card shortcut-card">
+                <div class="card-body">
+                    <div class="shortcut-icon" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-person-circle"></i></div>
+                    <div class="shortcut-title">My Profile</div>
+                    <div class="shortcut-desc">Update your account details</div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if children %}
+<div class="row g-3 mb-4">
+    {% for c in children %}
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div style="display:flex;align-items:center;gap:0.85rem;margin-bottom:1rem">
+                    <div class="sb-avatar" style="width:48px;height:48px;font-size:1rem;border-radius:12px">
+                        {{ c.student.first_name|truncatechars:1 }}{{ c.student.last_name|truncatechars:1 }}
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:1.05rem;color:var(--color-text-primary)">{{ c.student.get_full_name }}</div>
+                        <div style="font-size:0.78rem;color:var(--color-text-muted)">{{ c.student.institutional_id }} &middot; {{ c.student.email }}</div>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4 text-center">
+                        <div style="font-size:1.5rem;font-weight:800;color:var(--color-primary)">{{ c.enrolled_courses }}</div>
+                        <div style="font-size:0.72rem;color:var(--color-text-muted);font-weight:600">Courses</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div style="font-size:1.5rem;font-weight:800;color:var(--color-success)">{{ c.total_attendance }}</div>
+                        <div style="font-size:0.72rem;color:var(--color-text-muted);font-weight:600">Attended</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div style="font-size:1.5rem;font-weight:800;color:{% if c.pending_leaves %}var(--color-warning){% else %}var(--color-text-muted){% endif %}">{{ c.pending_leaves }}</div>
+                        <div style="font-size:0.72rem;color:var(--color-text-muted);font-weight:600">Pending Leaves</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                    <a href="{% url 'attendance:parent_student_stats' c.student.pk %}" class="btn btn-primary btn-sm"><i class="bi bi-graph-up"></i> Statistics</a>
+                    <a href="{% url 'attendance:parent_student_attendance' c.student.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-clock-history"></i> History</a>
+                    <a href="{% url 'attendance:parent_student_timetable' c.student.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week"></i> Timetable</a>
+                    <a href="{% url 'attendance:parent_student_leaves' c.student.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-journal-x"></i> Leaves</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-person-x"></i></div>
+        <h5 style="font-weight:700;color:var(--color-text-primary)">No Students Linked</h5>
+        <p>Your account is not linked to any students yet. Please contact the administrator to link your child's account.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

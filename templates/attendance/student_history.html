@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Attendance History - SmartID{% endblock %}
+{% block sb_stu_history %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-clock-history"></i> Attendance History</h1>
+    <p>View and filter your complete attendance records.</p>
+</div>
+
+{# ── Filters ── #}
+<div class="card mb-4">
+    <form method="get" style="padding:1rem 1.25rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end">
+        <div style="flex:1;min-width:140px">
+            <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Course</label>
+            <select name="course" class="form-control">
+                <option value="">All Courses</option>
+                {% for c in courses %}<option value="{{ c.pk }}" {% if filters.course == c.pk|stringformat:"d" %}selected{% endif %}>{{ c.code }}</option>{% endfor %}
+            </select>
+        </div>
+        <div style="flex:1;min-width:140px">
+            <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Location</label>
+            <select name="location" class="form-control">
+                <option value="">All Locations</option>
+                {% for l in locations %}<option value="{{ l.pk }}" {% if filters.location == l.pk|stringformat:"d" %}selected{% endif %}>{{ l.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div style="flex:1;min-width:130px">
+            <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">From</label>
+            <input type="date" name="from" class="form-control" value="{{ filters.from|default:'' }}">
+        </div>
+        <div style="flex:1;min-width:130px">
+            <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">To</label>
+            <input type="date" name="to" class="form-control" value="{{ filters.to|default:'' }}">
+        </div>
+        <div style="flex:1;min-width:120px">
+            <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Status</label>
+            <select name="status" class="form-control">
+                <option value="">All</option>
+                <option value="on_time" {% if filters.status == 'on_time' %}selected{% endif %}>On time</option>
+                <option value="late" {% if filters.status == 'late' %}selected{% endif %}>Late</option>
+            </select>
+        </div>
+        <button class="btn btn-primary btn-sm" style="height:var(--control-h)"><i class="bi bi-funnel"></i> Filter</button>
+        <a href="{% url 'attendance:student_history' %}" class="btn btn-ghost btn-sm" style="height:var(--control-h)">Clear</a>
+    </form>
+</div>
+
+{# ── Records Table ── #}
+<div class="card">
+    <div style="padding:0 1.25rem 1.25rem">
+        {% if records %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Date / Time</th><th>Course</th><th>Location</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td style="white-space:nowrap;font-weight:600;color:var(--color-text-primary)">{{ r.marked_at|date:"M d, Y" }} <span style="color:var(--color-text-muted);font-weight:400">{{ r.marked_at|date:"H:i" }}</span></td>
+                        <td>
+                            {% if r.session.course %}
+                            <span style="background:var(--color-primary-bg);color:var(--color-primary);padding:2px 10px;border-radius:20px;font-size:.8rem;font-weight:600">{{ r.session.course.code }}</span>
+                            {% else %}
+                            <span style="color:var(--color-text-muted);font-size:.85rem">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--color-text-secondary)">{{ r.location.name }} <span style="color:var(--color-text-muted);font-size:.8rem">({{ r.location.code }})</span></td>
+                        <td>
+                            {% if r.status == 'on_time' %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-check-circle-fill"></i> On time</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning)"><i class="bi bi-clock-history"></i> Late</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-calendar-x" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+            <h6 style="color:var(--color-text-primary)">No records found</h6>
+            <p style="color:var(--color-text-muted)">Try adjusting your filters or mark attendance first.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav aria-label="Attendance pagination" style="margin-top:1.5rem">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&course={{ filters.course }}&location={{ filters.location }}&from={{ filters.from }}&to={{ filters.to }}&status={{ filters.status }}">Previous</a></li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+        {% endif %}
+        
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+        
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&course={{ filters.course }}&location={{ filters.location }}&from={{ filters.from }}&to={{ filters.to }}&status={{ filters.status }}">Next</a></li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">Next</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

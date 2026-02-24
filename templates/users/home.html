@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}SmartID Ecosystem{% endblock %}
+{% block extra_css %}
+<style>
+    .hero { min-height: calc(100vh - 140px); display: flex; align-items: center; justify-content: center; text-align: center; padding: 2rem 1rem; }
+    .hero-brand-logo { height: 64px; width: auto; margin-bottom: 1.5rem; display: inline-block; }
+    .hero h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 0.75rem; color: var(--color-text-primary); }
+    .hero h1 span { color: var(--color-primary); }
+    .hero p { font-size: 1.1rem; color: var(--color-text-secondary); max-width: 480px; margin: 0 auto 2rem; }
+    .hero-btns { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .hero-btns .btn { min-width: 160px; }
+    .hero-features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 2.5rem; max-width: 680px; margin-left: auto; margin-right: auto; }
+    .hero-feature { text-align: center; }
+    .hero-feature .hf-icon { width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .hero-feature h6 { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.2rem; color: var(--color-text-primary); }
+    .hero-feature p { font-size: 0.75rem; color: var(--color-text-muted); margin: 0; }
+    @media (max-width: 768px) {
+        .hero h1 { font-size: 1.8rem; }
+        .hero p { font-size: 1rem; margin-bottom: 1.5rem; }
+        .hero-features { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; margin-top: 2rem; }
+    }
+    @media (max-width: 576px) {
+        .hero h1 { font-size: 1.5rem; }
+        .hero p { font-size: 0.9rem; }
+        .hero-btns { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+        .hero-btns .btn { min-width: 0; width: 100%; }
+        .hero-features { gap: 1rem; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="hero">
+    <div>
+        <img src="{% static 'images/smartid-logo.svg' %}" alt="SmartID Ecosystem" class="hero-brand-logo">
+        <h1>Welcome to <span>SmartID</span></h1>
+        <p>Intelligent, secure authentication and attendance management for your campus.</p>
+        <div class="hero-btns">
+            <a href="{% url 'users:login' %}" class="btn btn-primary btn-lg"><i class="bi bi-box-arrow-in-right"></i> Sign In</a>
+        </div>
+        <p style="font-size:0.95rem;color:var(--color-text-muted);margin-top:1rem">One sign-in for everyone — you’ll be taken to the right place based on your role.</p>
+        <p style="font-size:0.88rem;color:var(--color-text-muted);margin-top:0.5rem">New users are enrolled by an administrator. Contact your department admin for access.</p>
+        <div class="hero-features">
+            <div class="hero-feature">
+                <div class="hf-icon" style="background:var(--color-primary-bg);color:var(--color-primary)"><i class="bi bi-fingerprint"></i></div>
+                <h6>Multi-Modal Auth</h6>
+                <p>RFID, biometric, and credential-based login</p>
+            </div>
+            <div class="hero-feature">
+                <div class="hf-icon" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-check2-all"></i></div>
+                <h6>Auto Attendance</h6>
+                <p>Real-time logging with location tracking</p>
+            </div>
+            <div class="hero-feature">
+                <div class="hf-icon" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-graph-up-arrow"></i></div>
+                <h6>Live Analytics</h6>
+                <p>Reports and insights for administrators</p>
+            </div>
+            <div class="hero-feature">
+                <div class="hf-icon" style="background:var(--color-warning-bg);color:var(--color-warning)"><i class="bi bi-lock-fill"></i></div>
+                <h6>Privacy First</h6>
+                <p>Encrypted data with consent management</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

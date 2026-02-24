@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}{{ student.get_full_name }}'s Attendance - SmartID{% endblock %}
+{% block sb_parent_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-clock-history"></i> {{ student.first_name }}'s Attendance History</h1>
+    <p>Viewing records for <strong>{{ student.get_full_name }}</strong> ({{ student.institutional_id }})</p>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body" style="padding:0.85rem 1.25rem">
+        <form method="get" style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:end">
+            <div>
+                <label class="form-label">Course</label>
+                <select name="course" class="form-select" style="min-width:180px">
+                    <option value="">All Courses</option>
+                    {% for c in courses %}
+                    <option value="{{ c.pk }}" {% if filters.course == c.pk|stringformat:"d" %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn btn-primary btn-sm" style="height:var(--control-h)"><i class="bi bi-funnel"></i> Filter</button>
+            <a href="{% url 'attendance:parent_dashboard' %}" class="btn btn-ghost btn-sm" style="height:var(--control-h)"><i class="bi bi-arrow-left"></i> Back</a>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="section-title"><i class="bi bi-list-ul"></i> Records <span style="font-weight:400;color:var(--color-text-muted);font-size:0.82rem">({{ records|length }})</span></div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>Date / Time</th><th>Course</th><th>Location</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td style="white-space:nowrap">{{ r.marked_at|date:"M d, Y H:i" }}</td>
+                        <td>{% if r.session.course %}{{ r.session.course.code }}{% else %}<span style="color:var(--color-text-muted)">—</span>{% endif %}</td>
+                        <td>{{ r.location.name }}</td>
+                        <td>
+                            {% if r.status == 'on_time' %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success);font-size:.8rem">On time</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning);font-size:.8rem">Late</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4"><div class="empty-state" style="padding:2rem 1rem"><div class="empty-icon" style="font-size:2rem"><i class="bi bi-inbox"></i></div><p>No attendance records found.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

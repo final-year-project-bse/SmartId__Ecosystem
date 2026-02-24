@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" width="160" height="80" aria-label="SmartID Ecosystem">
+  <defs>
+    <style>
+      .logo-line { fill: none; stroke: #6C4EEB; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .logo-node { fill: none; stroke: #6C4EEB; stroke-width: 1.5; }
+      .logo-smart { font-family: Arial, Helvetica, sans-serif; font-size: 22px; font-weight: 700; fill: #1f2937; }
+      .logo-ecosystem { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 400; fill: #6b7280; letter-spacing: 2.5px; }
+    </style>
+  </defs>
+  <!-- Two overlapping house outlines + circuit lines -->
+  <g transform="translate(80 28)">
+    <!-- Left house: roof + left wall -->
+    <path class="logo-line" d="M -28 12 L -28 -8 L -18 -16 L -8 -8 L -8 12 L -28 12"/>
+    <!-- Right house: roof + walls -->
+    <path class="logo-line" d="M -8 12 L -8 -8 L 2 -16 L 22 -8 L 22 12 L -8 12"/>
+    <!-- Circuit nodes (circles) -->
+    <circle class="logo-node" cx="-23" cy="-10" r="2.5"/>
+    <circle class="logo-node" cx="-18" cy="6" r="2.5"/>
+    <circle class="logo-node" cx="-3" cy="-10" r="2.5"/>
+    <circle class="logo-node" cx="12" cy="-10" r="2.5"/>
+    <circle class="logo-node" cx="17" cy="6" r="2.5"/>
+    <!-- Circuit traces (connecting lines) -->
+    <path class="logo-line" d="M -18 -14 L -23 -10"/>
+    <path class="logo-line" d="M -18 2 L -18 6 L -18 10"/>
+    <path class="logo-line" d="M -8 -8 L -3 -10"/>
+    <path class="logo-line" d="M 2 -8 L -3 -10"/>
+    <path class="logo-line" d="M 12 -10 L 17 -8"/>
+    <path class="logo-line" d="M 17 -4 L 17 6"/>
+  </g>
+  <!-- Text: SmartID -->
+  <text x="80" y="58" text-anchor="middle" class="logo-smart">SmartID</text>
+  <!-- Text: Ecosystem -->
+  <text x="80" y="72" text-anchor="middle" class="logo-ecosystem">Ecosystem</text>
+</svg>

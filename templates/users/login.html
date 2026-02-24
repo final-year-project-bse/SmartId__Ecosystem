@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Sign In - SmartID{% endblock %}
+{% block extra_css %}
+<style>
+/* Login page only – ensures styles apply */
+.guest-wrap .auth-wrap { min-height: calc(100vh - 80px); padding: 2.5rem 1rem; background: linear-gradient(160deg, #F4F6F8 0%, rgba(108,78,235,0.05) 100%); }
+.guest-wrap .auth-col { max-width: 520px; width: 100%; min-width: 280px; }
+.guest-wrap .auth-card { border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08), 0 0 0 1px rgba(108,78,235,0.06); }
+.guest-wrap .auth-card .card-body { padding: 2.5rem 2rem; }
+.guest-wrap .auth-card-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.75rem; border-bottom: 1px solid #F3F4F6; }
+.guest-wrap .auth-card-icon { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #6C4EEB, #7C5CFA); display: inline-flex; align-items: center; justify-content: center; font-size: 1.75rem; color: #fff; margin-bottom: 1.25rem; box-shadow: 0 8px 24px rgba(108,78,235,0.25); }
+.guest-wrap .auth-title { font-size: 1.65rem; font-weight: 800; color: #1F2937; margin: 0 0 0.35rem 0; }
+.guest-wrap .auth-subtitle { font-size: 1rem; color: #6B7280; margin: 0; line-height: 1.5; }
+/* Form box – container */
+.guest-wrap .auth-form {
+    background: linear-gradient(180deg, #FAFBFC 0%, #F4F6F8 100%);
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 1.5rem 1.5rem 1.25rem;
+    margin-bottom: 0;
+}
+.guest-wrap .auth-form .field-wrap { margin-bottom: 1.35rem; }
+.guest-wrap .auth-form .field-wrap:last-of-type { margin-bottom: 1.5rem; }
+.guest-wrap .auth-form label { font-size: 0.92rem; font-weight: 600; color: #374151; margin-bottom: 0.5rem; display: block; }
+/* Input boxes – email & password */
+.guest-wrap .auth-form input[type="email"],
+.guest-wrap .auth-form input[type="password"],
+.guest-wrap .auth-form input[type="text"],
+.guest-wrap .auth-form input:not([type]) {
+    width: 100%;
+    height: 48px;
+    padding: 0 1rem;
+    font-size: 1rem;
+    color: #1F2937;
+    background: #fff;
+    border: 2px solid #E5E7EB;
+    border-radius: 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.guest-wrap .auth-form input::placeholder { color: #9CA3AF; }
+.guest-wrap .auth-form input:hover { border-color: #D1D5DB; }
+.guest-wrap .auth-form input:focus {
+    outline: none;
+    border-color: #6C4EEB;
+    box-shadow: 0 0 0 4px rgba(108,78,235,0.15);
+}
+/* Sign In button – primary box */
+.guest-wrap .auth-form .auth-submit {
+    width: 100%;
+    height: 52px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #6C4EEB 0%, #5B3DD4 100%);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(108,78,235,0.35);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.guest-wrap .auth-form .auth-submit:hover {
+    background: linear-gradient(135deg, #5B3DD4 0%, #4C2FC4 100%);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(108,78,235,0.4);
+}
+.guest-wrap .auth-form .alert { border-radius: 10px; }
+.guest-wrap .auth-forgot { display: block; text-align: center; margin-top: 1.25rem; font-size: 0.95rem; font-weight: 600; color: #6C4EEB; }
+.guest-wrap .auth-divider { display: flex; align-items: center; gap: 1.25rem; margin: 1.5rem 0; color: #9CA3AF; font-size: 0.85rem; }
+.guest-wrap .auth-divider::before, .guest-wrap .auth-divider::after { content: ''; flex: 1; height: 1px; background: #E5E7EB; }
+.guest-wrap .auth-footer-note { text-align: center; padding: 1rem 1.25rem; background: #F4F6F8; border-radius: 8px; font-size: 0.92rem; color: #6B7280; margin: 0; }
+@media (max-width: 576px) { .guest-wrap .auth-card .card-body { padding: 1.5rem 1.25rem; } .guest-wrap .auth-card-icon { width: 56px; height: 56px; font-size: 1.5rem; } .guest-wrap .auth-title { font-size: 1.2rem; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center auth-wrap">
+    <div class="col-12 auth-col">
+        <div class="card auth-card">
+            <div class="card-body">
+                <header class="auth-card-header">
+                    <img src="{% static 'images/smartid-logo.svg' %}" alt="SmartID Ecosystem" style="height:56px;width:auto;margin-bottom:1rem;display:inline-block;">
+                    <h1 class="auth-title">Welcome back</h1>
+                    <p class="auth-subtitle">Sign in with your email or registration number and password.</p>
+                </header>
+
+                <form method="post" action="{% url 'users:login' %}" class="auth-form">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger mb-3">{% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}</div>
+                    {% endif %}
+                    {% for field in form %}
+                    <div class="field-wrap">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary auth-submit">
+                        <i class="bi bi-box-arrow-in-right"></i> Sign In
+                    </button>
+                </form>
+
+                <a href="{% url 'users:password_reset' %}" class="auth-forgot">Forgot your password?</a>
+
+                <div class="auth-divider">or</div>
+
+                <p class="auth-footer-note">
+                    Need access? Contact your <strong>department administrator</strong> to be enrolled.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

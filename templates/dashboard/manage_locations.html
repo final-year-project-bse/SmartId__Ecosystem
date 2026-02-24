@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Locations - SmartID{% endblock %}
+{% block sb_locations %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-pin-map"></i> Manage Locations</h1>
+    <p>Add and manage classrooms, labs, and other campus locations.</p>
+</div>
+
+<div class="row g-3 g-lg-4">
+    <div class="col-12 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="bi bi-plus-circle"></i> Add Location</div>
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+                    <div class="field-wrap">
+                        <label>Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Room 101" required>
+                    </div>
+                    <div class="field-wrap">
+                        <label>Code</label>
+                        <input type="text" name="code" class="form-control" placeholder="e.g. R101" required>
+                    </div>
+                    <div class="field-wrap">
+                        <label>Type</label>
+                        <select name="location_type" class="form-select">
+                            {% for val, label in location_types %}
+                                <option value="{{ val }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> Add Location</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>Name</th><th>Code</th><th>Type</th></tr></thead>
+                        <tbody>
+                            {% for loc in locations %}
+                            <tr>
+                                <td><strong>{{ loc.name }}</strong></td>
+                                <td><code style="font-size:0.8rem">{{ loc.code }}</code></td>
+                                <td><span class="role-badge professor" style="text-transform:capitalize">{{ loc.get_location_type_display }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3"><div class="empty-state"><div class="empty-icon"><i class="bi bi-geo-alt"></i></div><p>No locations yet. Add one to get started.</p></div></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

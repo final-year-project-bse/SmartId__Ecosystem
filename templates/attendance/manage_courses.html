@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Manage Courses - SmartID{% endblock %}
+{% block sb_courses %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-book"></i> Course Management</h1>
+    <p>Create courses and assign professors.</p>
+</div>
+
+{# ── Create Form ── #}
+<div class="card mb-4">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+        <h6 style="margin:0;font-weight:700;color:var(--color-text-primary)"><i class="bi bi-plus-circle" style="color:var(--color-primary);margin-right:.4rem"></i>Create Course</h6>
+    </div>
+    <form method="post" style="padding:1rem 1.25rem">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-2">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Code</label>
+                <input type="text" name="code" class="form-control" placeholder="CS-101" required>
+            </div>
+            <div class="col-12 col-md-3">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Name</label>
+                <input type="text" name="name" class="form-control" placeholder="Data Structures" required>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Professor</label>
+                <select name="professor_id" class="form-control" required>
+                    <option value="">Select</option>
+                    {% for p in professors %}<option value="{{ p.pk }}">{{ p.get_full_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Day</label>
+                <select name="day_of_week" class="form-control">
+                    <option value="">—</option>
+                    <option value="monday">Mon</option><option value="tuesday">Tue</option><option value="wednesday">Wed</option>
+                    <option value="thursday">Thu</option><option value="friday">Fri</option><option value="saturday">Sat</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Start</label>
+                <input type="time" name="start_time" class="form-control">
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">End</label>
+                <input type="time" name="end_time" class="form-control">
+            </div>
+            <div class="col-6 col-md-2">
+                <button type="submit" class="btn btn-primary" style="width:100%"><i class="bi bi-plus-lg"></i> Create</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{# ── Course List ── #}
+<div class="card">
+    <div style="padding:0 1.25rem 1.25rem">
+        {% if courses %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Code</th><th>Name</th><th>Professor</th><th>Location</th><th>Schedule</th><th style="text-align:right">Actions</th></tr></thead>
+                <tbody>
+                    {% for c in courses %}
+                    <tr>
+                        <td><span style="background:var(--color-primary-bg);color:var(--color-primary);padding:2px 10px;border-radius:20px;font-size:.8rem;font-weight:600">{{ c.code }}</span></td>
+                        <td style="font-weight:600;color:var(--color-text-primary)">{{ c.name }}</td>
+                        <td style="color:var(--color-text-secondary)">{{ c.professor.get_full_name }}</td>
+                        <td style="color:var(--color-text-muted)">{{ c.location.name|default:"—" }}</td>
+                        <td style="color:var(--color-text-muted);font-size:.85rem">{{ c.schedule_display }}</td>
+                        <td style="text-align:right">
+                            <a href="{% url 'attendance:manage_course_enrollment' c.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-people"></i> Enrollment</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-book" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+            <h6 style="color:var(--color-text-primary)">No courses created</h6>
+            <p style="color:var(--color-text-muted)">Create your first course above.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

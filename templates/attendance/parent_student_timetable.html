@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}{{ student.get_full_name }}'s Timetable - SmartID{% endblock %}
+{% block sb_parent_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+    <div>
+        <h1><i class="bi bi-calendar-week"></i> {{ student.first_name }}'s Timetable</h1>
+        <p>Weekly class schedule for <strong>{{ student.get_full_name }}</strong>.</p>
+    </div>
+    <div class="d-flex gap-1 flex-wrap">
+        <a href="?view=list" class="btn btn-sm {% if view_mode == 'list' %}btn-primary{% else %}btn-ghost{% endif %}"><i class="bi bi-list-ul"></i> List</a>
+        <a href="?view=grid" class="btn btn-sm {% if view_mode == 'grid' %}btn-primary{% else %}btn-ghost{% endif %}"><i class="bi bi-grid-3x3-gap"></i> Grid</a>
+        <a href="{% url 'attendance:parent_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+{% if view_mode == 'grid' and grid_data.grid %}
+<div class="card mb-4">
+    <div class="table-responsive">
+        <table class="table table-bordered mb-0 timetable-grid">
+            <thead>
+                <tr>
+                    <th style="width:72px;font-size:0.8rem">Time</th>
+                    {% for day_num, day_label in grid_data.days %}
+                    <th class="text-center" style="font-size:0.8rem">{{ day_label }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in grid_data.grid %}
+                <tr>
+                    <td class="text-nowrap" style="font-size:0.78rem;color:var(--color-text-muted)">{{ row.time_label }}</td>
+                    {% for cell in row.cells %}
+                    <td class="timetable-cell" style="vertical-align:top;min-height:48px">
+                        {% for it in cell %}
+                        <div class="timetable-block mb-1" style="background:var(--color-primary-bg);color:var(--color-primary);padding:0.35rem 0.5rem;border-radius:8px;font-size:0.78rem;border-left:3px solid var(--color-primary)">
+                            <strong>{{ it.course.code }}</strong>
+                            {% if it.location %}<br><span style="color:var(--color-text-muted)"><i class="bi bi-pin-map"></i> {{ it.location.name }}</span>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% elif view_mode == 'grid' %}
+<div class="card mb-4">
+    <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+        <h6 style="color:var(--color-text-primary)">No schedule for grid</h6>
+        <p style="color:var(--color-text-muted)">Switch to List view or add enrolled courses with schedule.</p>
+    </div>
+</div>
+{% endif %}
+
+{% if view_mode == 'list' %}
+{% for day, classes in schedule.items %}
+{% if classes %}
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="section-title"><i class="bi bi-calendar-day"></i> {{ day|title }}</div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>Time</th><th>Course</th><th>Professor</th><th>Location</th></tr></thead>
+                <tbody>
+                    {% for c in classes %}
+                    <tr>
+                        <td style="white-space:nowrap">{{ c.start_time|time:"h:i A" }} – {{ c.end_time|time:"h:i A" }}</td>
+                        <td><strong>{{ c.code }}</strong> — {{ c.name }}</td>
+                        <td>{{ c.professor.get_full_name }}</td>
+                        <td>{{ c.location.name|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if not courses %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+        <h6 style="color:var(--color-text-primary)">No Classes Scheduled</h6>
+        <p style="color:var(--color-text-muted)">{{ student.first_name }} has no scheduled classes.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

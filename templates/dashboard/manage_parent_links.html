@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Link Students — {{ parent.get_full_name }} - SmartID{% endblock %}
+{% block sb_users %}active{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+    <div>
+        <h1><i class="bi bi-link-45deg"></i> Link Students to Parent</h1>
+        <p>Parent: <strong>{{ parent.get_full_name }}</strong> ({{ parent.institutional_id }})</p>
+    </div>
+    <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back to Users</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="bi bi-person-plus"></i> Available Students</div>
+                {% if available_students %}
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>Student</th><th>ID</th><th></th></tr></thead>
+                        <tbody>
+                            {% for s in available_students %}
+                            <tr>
+                                <td><strong>{{ s.get_full_name }}</strong></td>
+                                <td style="color:var(--color-text-muted);font-size:0.82rem">{{ s.institutional_id }}</td>
+                                <td style="text-align:right">
+                                    <form method="post" style="display:inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="link">
+                                        <input type="hidden" name="student_id" value="{{ s.pk }}">
+                                        <button class="btn btn-primary btn-sm"><i class="bi bi-link"></i> Link</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding:1.5rem"><p>No available students to link.</p></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="bi bi-people-fill"></i> Linked Students ({{ linked_students|length }})</div>
+                {% if linked_students %}
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>Student</th><th>ID</th><th></th></tr></thead>
+                        <tbody>
+                            {% for link in linked_students %}
+                            <tr>
+                                <td><strong>{{ link.student.get_full_name }}</strong></td>
+                                <td style="color:var(--color-text-muted);font-size:0.82rem">{{ link.student.institutional_id }}</td>
+                                <td style="text-align:right">
+                                    <form method="post" style="display:inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="unlink">
+                                        <input type="hidden" name="student_id" value="{{ link.student.pk }}">
+                                        <button class="btn btn-danger btn-sm"><i class="bi bi-x-lg"></i> Unlink</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state" style="padding:1.5rem"><p>No students linked yet.</p></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

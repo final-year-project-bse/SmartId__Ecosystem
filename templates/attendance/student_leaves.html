@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Leave Requests - SmartID{% endblock %}
+{% block sb_stu_leaves %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-journal-x"></i> Leave Requests</h1>
+    <p>Submit and track your leave/absence requests.</p>
+</div>
+
+{# ── Submit Form ── #}
+<div class="card mb-4">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+        <h6 style="margin:0;color:var(--color-text-primary);font-weight:700"><i class="bi bi-plus-circle" style="color:var(--color-primary);margin-right:.4rem"></i>New Leave Request</h6>
+    </div>
+    <form method="post" style="padding:1rem 1.25rem">
+        {% csrf_token %}
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-3">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Course</label>
+                <select name="course_id" class="form-control" required>
+                    <option value="">Select course</option>
+                    {% for c in courses %}<option value="{{ c.pk }}">{{ c.code }} — {{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Date</label>
+                <input type="date" name="date" class="form-control" required>
+            </div>
+            <div class="col-12 col-md-5">
+                <label class="form-label" style="font-size:.8rem;font-weight:600;color:var(--color-text-primary)">Reason</label>
+                <input type="text" name="reason" class="form-control" placeholder="Brief reason for absence" required>
+            </div>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-primary" style="width:100%"><i class="bi bi-send"></i> Submit</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{# ── Leave History ── #}
+<div class="card">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+        <h6 style="margin:0;color:var(--color-text-primary);font-weight:700"><i class="bi bi-list-check" style="color:var(--color-primary);margin-right:.4rem"></i>My Requests</h6>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem">
+        {% if leaves %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Course</th><th>Date</th><th>Reason</th><th>Status</th><th>Reviewed By</th></tr></thead>
+                <tbody>
+                    {% for l in leaves %}
+                    <tr>
+                        <td><span style="background:var(--color-primary-bg);color:var(--color-primary);padding:2px 10px;border-radius:20px;font-size:.8rem;font-weight:600">{{ l.course.code }}</span></td>
+                        <td style="font-weight:600;color:var(--color-text-primary);white-space:nowrap">{{ l.date|date:"M d, Y" }}</td>
+                        <td style="color:var(--color-text-secondary);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ l.reason }}</td>
+                        <td>
+                            {% if l.status == 'pending' %}
+                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning)"><i class="bi bi-hourglass-split"></i> Pending</span>
+                            {% elif l.status == 'approved' %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-check-lg"></i> Approved</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-danger-bg);color:var(--color-danger)"><i class="bi bi-x-lg"></i> Rejected</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--color-text-muted);font-size:.85rem">{{ l.reviewed_by.get_full_name|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-journal" style="font-size:2rem;color:var(--color-text-muted)"></i>
+            <p style="color:var(--color-text-muted)">No leave requests submitted yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

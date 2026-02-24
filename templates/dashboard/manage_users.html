@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users - SmartID{% endblock %}
+{% block sb_users %}active{% endblock %}
+{% block extra_css %}
+<style>
+    @media (max-width: 768px) {
+        .users-table thead { display: none; }
+        .users-table tbody tr { display: block; padding: 0.85rem; border-bottom: 1px solid var(--color-border-light); }
+        .users-table tbody tr:last-child { border-bottom: none; }
+        .users-table tbody td { display: flex; padding: 0.2rem 0 !important; border: none !important; align-items: center; }
+        .users-table tbody td:first-child { margin-bottom: 0.4rem; }
+        .users-table tbody td:last-child { margin-top: 0.5rem; padding-top: 0.5rem !important; border-top: 1px solid var(--color-border-light) !important; }
+        .users-table .td-label { display: inline-block; width: 60px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: var(--color-text-muted); flex-shrink: 0; }
+        .users-table .d-flex.gap-1 { width: 100%; }
+        .users-table .d-flex.gap-1 .btn { flex: 1; }
+    }
+    @media (min-width: 769px) { .td-label { display: none !important; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1><i class="bi bi-people"></i> Manage Users</h1>
+        <p>Create, edit, and manage system accounts.</p>
+    </div>
+    <a href="{% url 'dashboard:create_user' %}" class="btn btn-primary btn-sm"><i class="bi bi-person-plus"></i> Enroll User</a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-sm-6 col-md-4">
+                <label class="form-label">Search</label>
+                <div style="position:relative">
+                    <i class="bi bi-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-text-muted);font-size:0.85rem"></i>
+                    <input type="text" name="q" class="form-control" style="padding-left:2.2rem" placeholder="Name, email, or ID..." value="{{ q }}">
+                </div>
+            </div>
+            <div class="col-6 col-sm-6 col-md-3">
+                <label class="form-label">Role</label>
+                <select name="role" class="form-select">
+                    <option value="">All Roles</option>
+                    {% for val, label in role_choices %}
+                        <option value="{{ val }}" {% if role_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-sm-6 col-md-3">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100 btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table users-table mb-0">
+                <thead>
+                    <tr><th>User</th><th>Role</th><th>Status</th><th>Joined</th><th class="text-end" style="padding-right:1.25rem">Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:0.75rem">
+                                <div style="width:36px;height:36px;border-radius:10px;background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0">
+                                    {{ u.first_name|truncatechars:1 }}{{ u.last_name|truncatechars:1 }}
+                                </div>
+                                <div>
+                                    <div style="font-weight:600;font-size:0.88rem;color:var(--color-text-primary)">{{ u.get_full_name }}</div>
+                                    <div style="font-size:0.78rem;color:var(--color-text-muted)">{{ u.email }} &middot; <code style="font-size:0.72rem">{{ u.institutional_id }}</code></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="td-label">Role</span><span class="role-badge {{ u.role }}">{{ u.get_role_display }}</span></td>
+                        <td>
+                            <span class="td-label">Status</span>
+                            <span class="status-badge"><span class="status-dot {% if u.is_active %}active{% else %}inactive{% endif %}"></span> {{ u.is_active|yesno:"Active,Inactive" }}</span>
+                        </td>
+                        <td><span class="td-label">Joined</span><span style="white-space:nowrap;font-size:0.82rem;color:var(--color-text-muted)">{{ u.date_joined|date:"M d, Y" }}</span></td>
+                        <td class="text-end" style="padding-right:1.25rem">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <a href="{% url 'dashboard:edit_user' u.pk %}" class="btn btn-ghost btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'dashboard:toggle_user_active' u.pk %}" class="d-inline">{% csrf_token %}
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %}" style="color:{% if u.is_active %}var(--color-warning){% else %}var(--color-success){% endif %}">
+                                        <i class="bi {% if u.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <a href="{% url 'dashboard:reset_user_password' u.pk %}" class="btn btn-ghost btn-sm" title="Reset Password"><i class="bi bi-key"></i></a>
+                                {% if u.role == 'parent' %}
+                                <a href="{% url 'dashboard:manage_parent_links' u.pk %}" class="btn btn-ghost btn-sm" title="Link Children" style="color:var(--color-info)"><i class="bi bi-link-45deg"></i></a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i class="bi bi-people"></i></div><p>No users found matching your filters.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav aria-label="User pagination" style="margin-top:1.5rem">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ q }}&role={{ role_filter }}&status={{ status_filter }}">Previous</a></li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}&q={{ q }}&role={{ role_filter }}&status={{ status_filter }}">{{ num }}</a></li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ q }}&role={{ role_filter }}&status={{ status_filter }}">Next</a></li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">Next</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}My Schedule - SmartID{% endblock %}
+{% block sb_teach_schedule %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-calendar-week"></i> My Schedule</h1>
+    <p>Your weekly teaching timetable.</p>
+</div>
+
+{% for day, classes in schedule.items %}
+{% if classes %}
+<div class="card mb-3">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+        <h6 style="margin:0;font-weight:700;color:var(--color-text-primary);text-transform:capitalize"><i class="bi bi-calendar-day" style="color:var(--color-primary);margin-right:.4rem"></i>{{ day }}</h6>
+    </div>
+    <div style="padding:.75rem 1.25rem">
+        {% for c in classes %}
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.65rem 0;{% if not forloop.last %}border-bottom:1px solid var(--color-border-light);{% endif %}">
+            <div style="width:44px;height:44px;border-radius:10px;background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0">
+                {{ c.start_time|time:"H:i" }}
+            </div>
+            <div style="flex:1">
+                <div style="font-weight:600;color:var(--color-text-primary)">{{ c.code }} — {{ c.name }}</div>
+                <div style="font-size:.82rem;color:var(--color-text-muted)">
+                    {% if c.location %}<i class="bi bi-pin-map" style="color:var(--color-primary)"></i> {{ c.location.name }} &middot; {% endif %}
+                    {{ c.start_time|time:"h:i A" }} – {{ c.end_time|time:"h:i A" }}
+                </div>
+            </div>
+            <a href="{% url 'attendance:teacher_class_attendance' c.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-list-check"></i></a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not courses %}
+<div class="card"><div class="empty-state">
+    <i class="bi bi-calendar-x" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+    <h6 style="color:var(--color-text-primary)">No schedule configured</h6>
+    <p style="color:var(--color-text-muted)">Your courses haven't been assigned a schedule yet.</p>
+</div></div>
+{% endif %}
+{% endblock %}

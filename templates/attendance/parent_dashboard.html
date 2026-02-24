@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Children Overview - SmartID{% endblock %}
+{% block sb_parent_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-house-heart"></i> Children Overview</h1>
+    <p>Monitor your children's academic attendance and performance.</p>
+</div>
+
+{% if children %}
+<div class="row g-3">
+    {% for c in children %}
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div style="display:flex;align-items:center;gap:0.85rem;margin-bottom:1rem">
+                    <div class="sb-avatar" style="width:48px;height:48px;font-size:1rem;border-radius:12px">
+                        {{ c.student.first_name|truncatechars:1 }}{{ c.student.last_name|truncatechars:1 }}
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:1.05rem;color:var(--color-text-primary)">{{ c.student.get_full_name }}</div>
+                        <div style="font-size:0.78rem;color:var(--color-text-muted)">{{ c.student.institutional_id }}</div>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4 text-center">
+                        <div style="font-size:1.5rem;font-weight:800;color:var(--color-primary)">{{ c.enrolled_courses }}</div>
+                        <div style="font-size:0.72rem;color:var(--color-text-muted);font-weight:600">Courses</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div style="font-size:1.5rem;font-weight:800;color:var(--color-success)">{{ c.total_attendance }}</div>
+                        <div style="font-size:0.72rem;color:var(--color-text-muted);font-weight:600">Attended</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div style="font-size:1.5rem;font-weight:800;color:{% if c.pending_leaves %}var(--color-warning){% else %}var(--color-text-muted){% endif %}">{{ c.pending_leaves }}</div>
+                        <div style="font-size:0.72rem;color:var(--color-text-muted);font-weight:600">Pending Leaves</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                    <a href="{% url 'attendance:parent_student_stats' c.student.pk %}" class="btn btn-primary btn-sm"><i class="bi bi-graph-up"></i> Statistics</a>
+                    <a href="{% url 'attendance:parent_student_attendance' c.student.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-clock-history"></i> History</a>
+                    <a href="{% url 'attendance:parent_student_timetable' c.student.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-week"></i> Timetable</a>
+                    <a href="{% url 'attendance:parent_student_leaves' c.student.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-journal-x"></i> Leaves</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-icon"><i class="bi bi-person-x"></i></div>
+        <h5 style="font-weight:700;color:var(--color-text-primary)">No Students Linked</h5>
+        <p>Your account is not linked to any students yet. Please contact the administrator.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

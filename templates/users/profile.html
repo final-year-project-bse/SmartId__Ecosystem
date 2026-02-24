@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Profile - SmartID{% endblock %}
+{% block sb_profile %}active{% endblock %}
+{% block extra_css %}
+<style>
+.profile-edit-card .card-body { padding: 1.75rem 1.5rem; }
+.profile-edit-card .profile-edit-title {
+    font-size: 1.05rem; font-weight: 700; color: var(--color-text-primary);
+    margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border-light);
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.profile-edit-card .profile-edit-title .bi { color: var(--color-primary); }
+.profile-edit-card .profile-form .field-wrap { margin-bottom: 1.25rem; }
+.profile-edit-card .profile-form label {
+    display: block; font-size: 0.9rem; font-weight: 600; color: var(--color-text-primary);
+    margin-bottom: 0.4rem;
+}
+.profile-edit-card .profile-form input[type="text"],
+.profile-edit-card .profile-form input[type="tel"] {
+    width: 100%; height: 48px; padding: 0 1rem; font-size: 1rem;
+    border: 2px solid var(--color-border); border-radius: 10px;
+    background: var(--color-bg-card); color: var(--color-text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.profile-edit-card .profile-form input:focus {
+    outline: none; border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px var(--color-primary-glow);
+}
+.profile-edit-card .profile-form .field-error {
+    color: var(--color-danger); font-size: 0.85rem; margin-top: 0.35rem;
+}
+.profile-edit-card .profile-form .row-fields { display: flex; gap: 1rem; flex-wrap: wrap; }
+.profile-edit-card .profile-form .row-fields .field-wrap { flex: 1; min-width: 0; }
+@media (min-width: 576px) {
+    .profile-edit-card .profile-form .row-fields .field-wrap { min-width: 140px; }
+}
+.profile-edit-card .profile-form .btn-save {
+    min-height: 48px; padding: 0 1.5rem; font-size: 1rem; font-weight: 600;
+    border-radius: 10px; margin-top: 0.5rem;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-person-circle"></i> Profile</h1>
+    <p>View and manage your personal information.</p>
+</div>
+
+<div class="row g-3 g-md-4">
+    <div class="col-12 col-md-4">
+        <div class="card">
+            <div class="card-body text-center" style="padding:1.5rem 1.25rem">
+                <div style="width:64px;height:64px;border-radius:16px;background:var(--color-primary);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:800;margin-bottom:0.75rem">
+                    {{ user.first_name|truncatechars:1 }}{{ user.last_name|truncatechars:1 }}
+                </div>
+                <h5 style="font-weight:700;margin-bottom:0.25rem;color:var(--color-text-primary);font-size:1.1rem">{{ user.get_full_name }}</h5>
+                <span class="role-badge {{ user.role }}">{{ user.get_role_display }}</span>
+                <a href="{% url 'users:id_card' %}" class="btn btn-outline-primary btn-sm mb-3"><i class="bi bi-person-badge"></i> View / Print campus ID</a>
+                <div style="border-top:1px solid var(--color-border-light);margin:1rem 0;padding-top:1rem;text-align:left">
+                    <div class="d-flex align-items-center gap-2 mb-2" style="font-size:0.85rem">
+                        <i class="bi bi-envelope" style="color:var(--color-primary);width:18px;flex-shrink:0"></i>
+                        <span style="word-break:break-all">{{ user.email }}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2" style="font-size:0.85rem">
+                        <i class="bi bi-credit-card-2-front" style="color:var(--color-primary);width:18px;flex-shrink:0"></i>
+                        <code style="font-size:0.8rem">{{ user.institutional_id }}</code> <span style="color:var(--color-text-muted);font-size:0.78rem">(registration number)</span>
+                    </div>
+                    {% if user.phone %}
+                    <div class="d-flex align-items-center gap-2 mb-2" style="font-size:0.85rem">
+                        <i class="bi bi-telephone" style="color:var(--color-primary);width:18px;flex-shrink:0"></i>
+                        <span>{{ user.phone }}</span>
+                    </div>
+                    {% endif %}
+                    {% if auth_pref %}
+                    <div class="d-flex align-items-center gap-2" style="font-size:0.85rem">
+                        <i class="bi bi-key" style="color:var(--color-primary);width:18px;flex-shrink:0"></i>
+                        <span>{{ auth_pref.get_method_display }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if consent %}
+                <div style="border-top:1px solid var(--color-border-light);padding-top:0.75rem;text-align:left">
+                    <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.4rem">Consent</div>
+                    <div style="font-size:0.8rem;color:var(--color-text-secondary)">
+                        <div class="mb-1">Biometric: <strong>{{ consent.biometric_consent|yesno:"Granted,Not granted" }}</strong></div>
+                        <div class="mb-1">RFID: <strong>{{ consent.rfid_consent|yesno:"Granted,Not granted" }}</strong></div>
+                        <div>Data retention: <strong>{{ consent.data_retention_ack|yesno:"Accepted,Not accepted" }}</strong></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-8">
+        <div class="card profile-edit-card">
+            <div class="card-body">
+                <h2 class="profile-edit-title"><i class="bi bi-pencil-square"></i> Edit Profile</h2>
+                <form method="post" class="profile-form">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}</div>
+                    {% endif %}
+                    <div class="row-fields">
+                        <div class="field-wrap">
+                            <label for="{{ form.first_name.id_for_label }}">{{ form.first_name.label }}</label>
+                            {{ form.first_name }}
+                            {% for error in form.first_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                        </div>
+                        <div class="field-wrap">
+                            <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                            {{ form.last_name }}
+                            {% for error in form.last_name.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="field-wrap">
+                        <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                        {{ form.phone }}
+                        {% if form.phone.help_text %}<div style="font-size:0.82rem;color:var(--color-text-muted);margin-top:0.35rem">{{ form.phone.help_text }}</div>{% endif %}
+                        {% for error in form.phone.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-save"><i class="bi bi-check-lg"></i> Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

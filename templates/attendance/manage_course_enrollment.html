@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}{{ course.code }} Enrollment - SmartID{% endblock %}
+{% block sb_courses %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-people"></i> {{ course.code }} — Enrollment</h1>
+    <p>{{ course.name }} &middot; Manage enrolled students.</p>
+</div>
+
+<div style="margin-bottom:1rem"><a href="{% url 'attendance:manage_courses' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back to Courses</a></div>
+
+<div class="row g-4">
+    {# ── Enroll Students ── #}
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+                <h6 style="margin:0;font-weight:700;color:var(--color-text-primary)"><i class="bi bi-person-plus" style="color:var(--color-success);margin-right:.4rem"></i>Available Students</h6>
+            </div>
+            <div style="padding:.75rem 1.25rem;max-height:400px;overflow-y:auto">
+                {% for s in available_students %}
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;{% if not forloop.last %}border-bottom:1px solid var(--color-border-light);{% endif %}">
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                        <div style="width:30px;height:30px;border-radius:50%;background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem">{{ s.first_name|first }}{{ s.last_name|first }}</div>
+                        <div>
+                            <div style="font-weight:600;color:var(--color-text-primary);font-size:.88rem">{{ s.get_full_name }}</div>
+                            <div style="font-size:.75rem;color:var(--color-text-muted)">{{ s.institutional_id }}</div>
+                        </div>
+                    </div>
+                    <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="enroll"><input type="hidden" name="student_id" value="{{ s.pk }}"><button class="btn btn-sm" style="background:var(--color-success-bg);color:var(--color-success);border:none;font-weight:600" type="submit"><i class="bi bi-plus"></i></button></form>
+                </div>
+                {% empty %}
+                <div style="text-align:center;padding:1rem;color:var(--color-text-muted)">All students are enrolled.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    {# ── Enrolled Students ── #}
+    <div class="col-12 col-md-6">
+        <div class="card">
+            <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+                <h6 style="margin:0;font-weight:700;color:var(--color-text-primary)"><i class="bi bi-people-fill" style="color:var(--color-primary);margin-right:.4rem"></i>Enrolled ({{ enrolled.count }})</h6>
+            </div>
+            <div style="padding:.75rem 1.25rem;max-height:400px;overflow-y:auto">
+                {% for e in enrolled %}
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;{% if not forloop.last %}border-bottom:1px solid var(--color-border-light);{% endif %}">
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                        <div style="width:30px;height:30px;border-radius:50%;background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem">{{ e.student.first_name|first }}{{ e.student.last_name|first }}</div>
+                        <div>
+                            <div style="font-weight:600;color:var(--color-text-primary);font-size:.88rem">{{ e.student.get_full_name }}</div>
+                            <div style="font-size:.75rem;color:var(--color-text-muted)">{{ e.student.institutional_id }} &middot; Enrolled {{ e.enrolled_at|date:"M d" }}</div>
+                        </div>
+                    </div>
+                    <form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="action" value="remove"><input type="hidden" name="student_id" value="{{ e.student.pk }}"><button class="btn btn-sm" style="background:var(--color-danger-bg);color:var(--color-danger);border:none;font-weight:600" type="submit" onclick="return confirm('Remove this student?')"><i class="bi bi-x"></i></button></form>
+                </div>
+                {% empty %}
+                <div style="text-align:center;padding:1rem;color:var(--color-text-muted)">No students enrolled yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

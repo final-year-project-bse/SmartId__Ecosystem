@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% block title %}{{ form_title }} - SmartID{% endblock %}
+{% block sb_users %}active{% endblock %}
+{% block extra_css %}
+<style>
+.app-wrap .user-form-card .card-body { padding: 2rem; }
+.app-wrap .user-form-card .auth-form .field-wrap { margin-bottom: 1.35rem; }
+.app-wrap .user-form-card .auth-form label { font-size: 0.92rem; font-weight: 600; color: var(--color-text-primary); margin-bottom: 0.45rem; display: block; }
+.app-wrap .user-form-card .auth-form input[type="email"],
+.app-wrap .user-form-card .auth-form input[type="text"],
+.app-wrap .user-form-card .auth-form input[type="password"],
+.app-wrap .user-form-card .auth-form select { width: 100%; height: 48px; padding: 0 1rem; font-size: 1rem; border: 2px solid var(--color-border); border-radius: 10px; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; }
+.app-wrap .user-form-card .auth-form input:focus,
+.app-wrap .user-form-card .auth-form select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-glow); }
+.app-wrap .user-form-card .auth-form .checkbox-wrap { min-height: 48px; padding: 0.65rem 1rem; border-radius: 10px; border: 2px solid var(--color-border); }
+.app-wrap .user-form-card .auth-form .checkbox-wrap input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--color-primary); }
+/* Wizard */
+.wizard-progress { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; }
+.wizard-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--color-border); transition: background 0.2s; }
+.wizard-dot.active { background: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
+.wizard-dot.done { background: var(--color-success); }
+.wizard-step { display: none; }
+.wizard-step.active { display: block; }
+.wizard-step-title { font-size: 1.1rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+.wizard-step-title .bi { color: var(--color-primary); }
+.wizard-actions { display: flex; gap: 0.75rem; margin-top: 1.75rem; flex-wrap: wrap; }
+.wizard-actions .btn { min-height: 48px; font-size: 1rem; }
+.method-panel { display: none; padding: 1.25rem; background: var(--color-bg-page); border-radius: 10px; border: 1px solid var(--color-border); margin-top: 1rem; }
+.method-panel.active { display: block; }
+.method-panel .help { font-size: 0.88rem; color: var(--color-text-muted); margin-top: 0.5rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center auth-wrap">
+    <div class="col-12" style="max-width:640px">
+        <div class="card auth-card user-form-card">
+            <div class="card-body">
+                <h2 class="auth-title">{{ form_title }}</h2>
+                <p class="auth-subtitle">Complete the steps below. You can add face and fingerprint data later.</p>
+
+                <div class="wizard-progress">
+                    <span class="wizard-dot active" id="dot1" data-step="1"></span>
+                    <span class="wizard-dot" id="dot2" data-step="2"></span>
+                    <span class="wizard-dot" id="dot3" data-step="3"></span>
+                </div>
+
+                <form method="post" class="auth-form" id="enrollForm">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}</div>
+                    {% endif %}
+
+                    {# ── Step 1: Basic information ── #}
+                    <div class="wizard-step active" data-step="1">
+                        <div class="wizard-step-title"><i class="bi bi-person-plus"></i> Step 1 — Basic information</div>
+                        <div class="field-wrap">{{ form.email.label_tag }}{{ form.email }}{% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">{{ form.institutional_id.label_tag }}{{ form.institutional_id }}{% if form.institutional_id.errors %}<div class="field-error">{{ form.institutional_id.errors.0 }}</div>{% endif %}</div>
+                        <div class="row g-2">
+                            <div class="col-6"><div class="field-wrap">{{ form.first_name.label_tag }}{{ form.first_name }}{% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}</div></div>
+                            <div class="col-6"><div class="field-wrap">{{ form.last_name.label_tag }}{{ form.last_name }}{% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}</div></div>
+                        </div>
+                        <div class="field-wrap">{{ form.role.label_tag }}{{ form.role }}{% if form.role.errors %}<div class="field-error">{{ form.role.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">{{ form.phone.label_tag }}{{ form.phone }}{% if form.phone.help_text %}<div class="help">{{ form.phone.help_text }}</div>{% endif %}{% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">{{ form.password1.label_tag }}{{ form.password1 }}{% if form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">{{ form.password2.label_tag }}{{ form.password2 }}{% if form.password2.errors %}<div class="field-error">{{ form.password2.errors.0 }}</div>{% endif %}</div>
+                        <div class="wizard-actions">
+                            <button type="button" class="btn btn-primary" onclick="wizardNext()">Next</button>
+                            <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
+                        </div>
+                    </div>
+
+                    {# ── Step 2: Consent & authentication method ── #}
+                    <div class="wizard-step" data-step="2">
+                        <div class="wizard-step-title"><i class="bi bi-shield-check"></i> Step 2 — Consent & authentication</div>
+                        <div class="field-wrap">{{ form.auth_method.label_tag }}{% if form.auth_method.help_text %}<div class="help">{{ form.auth_method.help_text }}</div>{% endif %}{{ form.auth_method }}{% if form.auth_method.errors %}<div class="field-error">{{ form.auth_method.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_biometric }}<label for="{{ form.consent_biometric.id_for_label }}">{{ form.consent_biometric.label }}</label></div>{% if form.consent_biometric.help_text %}<div class="help">{{ form.consent_biometric.help_text }}</div>{% endif %}{% if form.consent_biometric.errors %}<div class="field-error">{{ form.consent_biometric.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_rfid }}<label for="{{ form.consent_rfid.id_for_label }}">{{ form.consent_rfid.label }}</label></div>{% if form.consent_rfid.help_text %}<div class="help">{{ form.consent_rfid.help_text }}</div>{% endif %}{% if form.consent_rfid.errors %}<div class="field-error">{{ form.consent_rfid.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.data_retention }}<label for="{{ form.data_retention.id_for_label }}">{{ form.data_retention.label }}</label></div>{% if form.data_retention.help_text %}<div class="help">{{ form.data_retention.help_text }}</div>{% endif %}{% if form.data_retention.errors %}<div class="field-error">{{ form.data_retention.errors.0 }}</div>{% endif %}</div>
+                        <div class="wizard-actions">
+                            <button type="button" class="btn btn-ghost" onclick="wizardPrev()">Previous</button>
+                            <button type="button" class="btn btn-primary" onclick="wizardNext()">Next</button>
+                        </div>
+                    </div>
+
+                    {# ── Step 3: Method-specific (RFID / Face / Fingerprint) ── #}
+                    <div class="wizard-step" data-step="3">
+                        <div class="wizard-step-title"><i class="bi bi-cpu"></i> Step 3 — Complete enrollment</div>
+                        <p class="mb-3" style="color:var(--color-text-secondary);font-size:0.95rem">Based on the chosen method, provide the data below or skip to complete later.</p>
+
+                        <div class="method-panel" id="panel-rfid" data-method="rfid">
+                            <div class="field-wrap">{{ form.rfid_tag.label_tag }}{% if form.rfid_tag.help_text %}<div class="help">{{ form.rfid_tag.help_text }}</div>{% endif %}{{ form.rfid_tag }}{% if form.rfid_tag.errors %}<div class="field-error">{{ form.rfid_tag.errors.0 }}</div>{% endif %}</div>
+                        </div>
+                        <div class="method-panel" id="panel-face" data-method="face">
+                            <p style="margin:0 0 1rem 0;color:var(--color-text-secondary);font-size:0.92rem">Position the user's face in the frame and click Capture. The image will be stored when you complete enrollment.</p>
+                            <div class="face-camera-wrap">
+                                <video id="faceVideo" autoplay playsinline muted style="width:100%;max-width:400px;height:300px;background:#111;border-radius:10px;object-fit:cover;display:block;"></video>
+                                <canvas id="faceCanvas" style="display:none;"></canvas>
+                                <input type="hidden" name="face_capture" id="faceCaptureInput" value="">
+                                <div class="wizard-actions" style="margin-top:1rem;">
+                                    <button type="button" class="btn btn-outline-primary" id="btnStartFaceCam"><i class="bi bi-camera-video"></i> Start camera</button>
+                                    <button type="button" class="btn btn-primary" id="btnCaptureFace" disabled><i class="bi bi-camera-fill"></i> Capture</button>
+                                </div>
+                                <p id="faceCaptureStatus" style="font-size:0.88rem;color:var(--color-success);margin:0.5rem 0 0;display:none;"><i class="bi bi-check-circle"></i> Face captured. You can capture again to replace.</p>
+                            </div>
+                        </div>
+                        <div class="method-panel" id="panel-fingerprint" data-method="fingerprint">
+                            <p style="margin:0;color:var(--color-text-muted)"><i class="bi bi-fingerprint"></i> Fingerprint enrollment will be available here in a future update.</p>
+                            <p style="margin:0.5rem 0 0;color:var(--color-text-secondary);font-size:0.9rem">You can skip this step and add fingerprint data later. Click <strong>Complete enrollment</strong> below to finish.</p>
+                            <div class="wizard-actions" style="margin-top:1rem">
+                                <button type="submit" class="btn btn-ghost"><i class="bi bi-skip-forward"></i> Skip — add later</button>
+                            </div>
+                        </div>
+
+                        <div class="wizard-actions">
+                            <button type="button" class="btn btn-ghost" onclick="wizardPrev()">Previous</button>
+                            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentStep = 1;
+var totalSteps = 3;
+
+function showStep(step) {
+    currentStep = step;
+    document.querySelectorAll('.wizard-step').forEach(function(el) {
+        el.classList.toggle('active', parseInt(el.getAttribute('data-step')) === step);
+    });
+    document.querySelectorAll('.wizard-dot').forEach(function(el) {
+        var n = parseInt(el.getAttribute('data-step'));
+        el.classList.remove('active', 'done');
+        if (n === step) el.classList.add('active');
+        else if (n < step) el.classList.add('done');
+    });
+    // Step 3: show method panel based on auth_method selection
+    if (step === 3) {
+        var method = (document.querySelector('select[name=auth_method]') || {}).value || '';
+        document.querySelectorAll('.method-panel').forEach(function(panel) {
+            panel.classList.toggle('active', panel.getAttribute('data-method') === method);
+        });
+        if (method !== 'face') stopFaceCamera();
+    } else {
+        stopFaceCamera();
+    }
+}
+
+var faceStream = null;
+
+function stopFaceCamera() {
+    if (faceStream) {
+        faceStream.getTracks().forEach(function(t) { t.stop(); });
+        faceStream = null;
+    }
+    var v = document.getElementById('faceVideo');
+    if (v && v.srcObject) v.srcObject = null;
+    var btn = document.getElementById('btnStartFaceCam');
+    if (btn) btn.textContent = ' Start camera';
+    var cap = document.getElementById('btnCaptureFace');
+    if (cap) cap.disabled = true;
+}
+
+function startFaceCamera() {
+    stopFaceCamera();
+    var video = document.getElementById('faceVideo');
+    if (!video) return;
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
+        .then(function(stream) {
+            faceStream = stream;
+            video.srcObject = stream;
+            var cap = document.getElementById('btnCaptureFace');
+            if (cap) cap.disabled = false;
+            var btn = document.getElementById('btnStartFaceCam');
+            if (btn) btn.innerHTML = '<i class="bi bi-stop-circle"></i> Stop camera';
+        })
+        .catch(function(err) {
+            console.error('Camera error:', err);
+            alert('Could not access the camera. Please allow camera permission and try again.');
+        });
+}
+
+function captureFace() {
+    var video = document.getElementById('faceVideo');
+    var canvas = document.getElementById('faceCanvas');
+    var input = document.getElementById('faceCaptureInput');
+    var status = document.getElementById('faceCaptureStatus');
+    if (!video || !canvas || !input || !video.srcObject) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    input.value = canvas.toDataURL('image/jpeg', 0.85);
+    if (status) status.style.display = 'block';
+}
+
+function wizardNext() {
+    if (currentStep < totalSteps) showStep(currentStep + 1);
+}
+
+function wizardPrev() {
+    if (currentStep > 1) showStep(currentStep - 1);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('select[name=auth_method]').addEventListener('change', function() {
+        if (currentStep === 3) {
+            var method = this.value;
+            document.querySelectorAll('.method-panel').forEach(function(panel) {
+                panel.classList.toggle('active', panel.getAttribute('data-method') === method);
+            });
+            if (method !== 'face') stopFaceCamera();
+        }
+    });
+
+    var btnStart = document.getElementById('btnStartFaceCam');
+    if (btnStart) {
+        btnStart.addEventListener('click', function() {
+            if (faceStream) stopFaceCamera();
+            else startFaceCamera();
+        });
+    }
+    var btnCapture = document.getElementById('btnCaptureFace');
+    if (btnCapture) btnCapture.addEventListener('click', captureFace);
+
+    var form = document.getElementById('enrollForm');
+    if (form) form.addEventListener('submit', function() { stopFaceCamera(); });
+});
+</script>
+{% endblock %}

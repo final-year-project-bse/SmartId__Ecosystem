@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Campus ID - SmartID{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-person-badge"></i> Campus ID</h1>
+    <p>Your name and registration number for identification. Print or save as PDF.</p>
+</div>
+<div class="card" style="max-width:380px;margin:0 auto;border:2px solid var(--color-primary);border-radius:16px;overflow:hidden">
+    <div class="card-body" style="padding:1.75rem;text-align:center">
+        <div style="width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg, var(--color-primary), #7C5CFA);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:1.75rem;font-weight:800;margin-bottom:1rem">
+            {{ user.first_name|truncatechars:1 }}{{ user.last_name|truncatechars:1 }}
+        </div>
+        <h4 style="font-weight:800;margin-bottom:0.35rem;color:var(--color-text-primary);font-size:1.25rem">{{ user.get_full_name }}</h4>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--color-primary);letter-spacing:0.05em;margin-bottom:0.5rem">{{ user.institutional_id }}</div>
+        <span class="role-badge {{ user.role }}">{{ user.get_role_display }}</span>
+        <div style="margin-top:1.25rem;font-size:0.75rem;color:var(--color-text-muted)">SmartID Ecosystem</div>
+    </div>
+</div>
+<div style="margin-top:1.5rem;text-align:center">
+    <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i> Print ID</button>
+    <a href="{% url 'users:profile' %}" class="btn btn-ghost">Back to Profile</a>
+</div>
+<style media="print">
+@media print {
+    .sidebar, .sb-overlay, .page-header p, .btn, nav, .breadcrumb, footer { display: none !important; }
+    .app-wrap { margin: 0 !important; }
+    .card { box-shadow: none; border: 2px solid #333 !important; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Reports - SmartID{% endblock %}
+{% block sb_reports %}active{% endblock %}
+{% block extra_css %}
+<style>
+    .period-tabs { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .period-tabs .btn { min-width: 80px; }
+    @media (max-width: 576px) { .period-tabs { gap: 0.25rem; } .period-tabs .btn { flex: 1; min-width: 0; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1><i class="bi bi-bar-chart-line"></i> Attendance Reports</h1>
+        <p>View and export attendance data by time period, location, and status.</p>
+    </div>
+    <a href="?period={{ period }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if location_id %}&location={{ location_id }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}&export=csv" class="btn btn-outline-primary btn-sm"><i class="bi bi-download"></i> Export CSV</a>
+</div>
+
+<div class="period-tabs">
+    <a href="?period=daily{% if status_filter %}&status={{ status_filter }}{% endif %}{% if location_id %}&location={{ location_id }}{% endif %}" class="btn btn-sm {% if period == 'daily' %}btn-primary{% else %}btn-ghost{% endif %}">Daily</a>
+    <a href="?period=weekly{% if status_filter %}&status={{ status_filter }}{% endif %}{% if location_id %}&location={{ location_id }}{% endif %}" class="btn btn-sm {% if period == 'weekly' %}btn-primary{% else %}btn-ghost{% endif %}">Weekly</a>
+    <a href="?period=monthly{% if status_filter %}&status={{ status_filter }}{% endif %}{% if location_id %}&location={{ location_id }}{% endif %}" class="btn btn-sm {% if period == 'monthly' %}btn-primary{% else %}btn-ghost{% endif %}">Monthly</a>
+</div>
+
+<div class="mb-3" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center">
+    <span style="font-size:0.85rem;font-weight:600;color:var(--color-text-secondary)">Status:</span>
+    <a href="?period={{ period }}{% if location_id %}&location={{ location_id }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-ghost{% endif %}">All</a>
+    <a href="?period={{ period }}&status=on_time{% if location_id %}&location={{ location_id }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="btn btn-sm {% if status_filter == 'on_time' %}btn-primary{% else %}btn-ghost{% endif %}">On time</a>
+    <a href="?period={{ period }}&status=late{% if location_id %}&location={{ location_id }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}" class="btn btn-sm {% if status_filter == 'late' %}btn-primary{% else %}btn-ghost{% endif %}">Late</a>
+
+    <span style="font-size:0.85rem;font-weight:600;color:var(--color-text-secondary)">Location:</span>
+    <form method="get" class="d-inline-flex align-items-center gap-1" style="flex-wrap:wrap">
+        <input type="hidden" name="period" value="{{ period }}">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        {% if start_date %}<input type="hidden" name="start_date" value="{{ start_date }}">{% endif %}
+        {% if end_date %}<input type="hidden" name="end_date" value="{{ end_date }}">{% endif %}
+        <select name="location" class="form-select form-select-sm" style="max-width:12rem" onchange="this.form.submit()">
+            <option value="">All locations</option>
+            {% for loc in locations %}
+            <option value="{{ loc.id }}" {% if location_id and loc.id|stringformat:"d" == location_id %}selected{% endif %}>{{ loc.name }} ({{ loc.code }})</option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <span style="font-size:0.85rem;font-weight:600;color:var(--color-text-secondary)">Custom range:</span>
+    <form method="get" class="d-inline-flex align-items-center gap-1 flex-wrap">
+        <input type="hidden" name="period" value="daily">
+        {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        {% if location_id %}<input type="hidden" name="location" value="{{ location_id }}">{% endif %}
+        <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date|default:'' }}" style="max-width:10rem">
+        <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date|default:'' }}" style="max-width:10rem">
+        <button type="submit" class="btn btn-sm btn-ghost">Apply</button>
+    </form>
+</div>
+
+<p class="text-muted small mb-3">Showing <strong>{{ report_start|date:"M d, Y" }}</strong> – <strong>{{ report_end|date:"M d, Y" }}</strong>{% if location_id %} at selected location{% endif %}.</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="bi bi-person-lines-fill"></i> By User</div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>ID</th><th>Name</th><th>Records</th></tr></thead>
+                        <tbody>
+                            {% for row in by_user %}
+                            <tr>
+                                <td><code style="font-size:0.78rem">{{ row.user__institutional_id }}</code></td>
+                                <td><strong>{{ row.user__first_name }} {{ row.user__last_name }}</strong></td>
+                                <td><span style="background:var(--color-primary-bg);color:var(--color-primary);padding:0.15rem 0.5rem;border-radius:999px;font-weight:700;font-size:0.78rem">{{ row.count }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3"><div class="empty-state" style="padding:2rem 1rem"><div class="empty-icon" style="font-size:2rem"><i class="bi bi-inbox"></i></div><p>No data for this period.</p></div></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="bi bi-pin-map-fill"></i> By Location</div>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr><th>Location</th><th>Code</th><th>Records</th></tr></thead>
+                        <tbody>
+                            {% for row in by_location %}
+                            <tr>
+                                <td><strong>{{ row.location__name }}</strong></td>
+                                <td><code style="font-size:0.78rem">{{ row.location__code }}</code></td>
+                                <td><span style="background:var(--color-info-bg);color:var(--color-info);padding:0.15rem 0.5rem;border-radius:999px;font-weight:700;font-size:0.78rem">{{ row.count }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="3"><div class="empty-state" style="padding:2rem 1rem"><div class="empty-icon" style="font-size:2rem"><i class="bi bi-inbox"></i></div><p>No data.</p></div></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if records %}
+<div class="card">
+    <div class="card-body">
+        <div class="section-title"><i class="bi bi-list-ul"></i> Detailed Records <span style="font-weight:400;color:var(--color-text-muted);font-size:0.82rem">(up to 100)</span></div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>Student</th><th>Location</th><th>Date / Time</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td><strong>{{ r.user.get_full_name }}</strong> <span class="d-none d-sm-inline" style="color:var(--color-text-muted);font-size:0.78rem">({{ r.user.institutional_id }})</span></td>
+                        <td>{{ r.location.name }}</td>
+                        <td style="white-space:nowrap">{{ r.marked_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if r.status == 'on_time' %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success);font-size:.78rem">On time</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning);font-size:.78rem">Late</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}My Dashboard - SmartID{% endblock %}
+{% block sb_dashboard %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-grid-1x2"></i> My Dashboard</h1>
+    <p>Welcome back, <strong>{{ user.get_full_name }}</strong>. Choose an action below to get started.</p>
+</div>
+
+<div class="shortcut-section">
+    <h2 class="shortcut-heading">What do you want to do?</h2>
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <a href="{% url 'attendance:attendance_page' %}" class="card shortcut-card shortcut-card-primary">
+                <div class="card-body">
+                    <div class="shortcut-icon"><i class="bi bi-check2-square"></i></div>
+                    <div class="shortcut-title">Mark Attendance</div>
+                    <div class="shortcut-desc">Record your presence at a location</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="{% url 'attendance:student_stats' %}" class="card shortcut-card">
+                <div class="card-body">
+                    <div class="shortcut-icon" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-graph-up"></i></div>
+                    <div class="shortcut-title">My Statistics</div>
+                    <div class="shortcut-desc">View attendance % per course</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="{% url 'attendance:student_timetable' %}" class="card shortcut-card">
+                <div class="card-body">
+                    <div class="shortcut-icon" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-calendar-week"></i></div>
+                    <div class="shortcut-title">Timetable</div>
+                    <div class="shortcut-desc">My class schedule</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-lg-3">
+            <a href="{% url 'attendance:student_leaves' %}" class="card shortcut-card">
+                <div class="card-body">
+                    <div class="shortcut-icon" style="background:var(--color-warning-bg);color:var(--color-warning)"><i class="bi bi-journal-x"></i></div>
+                    <div class="shortcut-title">Leave Requests</div>
+                    <div class="shortcut-desc">Submit or view leave requests</div>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="section-title"><i class="bi bi-clock-history"></i> Recent Attendance</div>
+        {% if records %}
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr><th>Date / Time</th><th>Location</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td style="white-space:nowrap">{{ r.marked_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ r.location.name }} <span style="color:var(--color-text-muted);font-size:0.8rem">({{ r.location.code }})</span></td>
+                        <td>
+                            {% if r.status == 'on_time' %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success);font-size:.8rem">On time</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning);font-size:.8rem">Late</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state"><div class="empty-icon"><i class="bi bi-calendar-x"></i></div><p>No attendance records yet.</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

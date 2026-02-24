@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}{{ student.get_full_name }}'s Statistics - SmartID{% endblock %}
+{% block sb_parent_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+    <div>
+        <h1><i class="bi bi-graph-up"></i> {{ student.first_name }}'s Statistics</h1>
+        <p>Attendance percentage per course for <strong>{{ student.get_full_name }}</strong> ({{ student.institutional_id }}). Below 75% is flagged.</p>
+    </div>
+    <a href="{% url 'attendance:parent_dashboard' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+{% if stats %}
+<div class="row g-3">
+    {% for s in stats %}
+    <div class="col-12 col-md-6">
+        <div class="metric-card">
+            <div class="mc-head">
+                <div class="mc-head-left">
+                    <div class="mc-icon {{ s.status }}"><i class="bi bi-book"></i></div>
+                    <div class="mc-title">{{ s.course.code }}<br><small style="font-weight:400;color:var(--color-text-muted)">{{ s.course.name }}</small></div>
+                </div>
+                <span class="mc-badge {{ s.status }}">{{ s.percentage }}%</span>
+            </div>
+            <div class="mc-value" style="font-size:1.8rem">{{ s.attended }} / {{ s.total_sessions }}</div>
+            <div class="mc-footer">
+                <span>{{ s.attended }} attended &middot; {{ s.missed }} missed</span>
+                {% if s.percentage < 75 %}<span style="color:var(--color-danger);font-weight:600"><i class="bi bi-exclamation-triangle-fill"></i> Low attendance</span>{% endif %}
+            </div>
+            <div class="mc-bar"><div class="mc-bar-fill {{ s.status }}" style="width:{{ s.percentage }}%"></div></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <i class="bi bi-mortarboard" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+        <h6 style="color:var(--color-text-primary)">No courses enrolled</h6>
+        <p style="color:var(--color-text-muted)">{{ student.first_name }} is not enrolled in any courses yet.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

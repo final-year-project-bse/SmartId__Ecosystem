@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Terminal Login - SmartID{% endblock %}
+{% block content %}
+<div class="row justify-content-center auth-wrap">
+    <div class="col-12 auth-col">
+        <div class="text-center mb-4">
+            <div style="width:48px;height:48px;border-radius:12px;background:var(--color-info-bg);color:var(--color-info);display:inline-flex;align-items:center;justify-content:center;font-size:1.3rem"><i class="bi bi-cpu"></i></div>
+        </div>
+        <div class="card auth-card">
+            <div class="card-body">
+                <h2 class="auth-title text-center">RFID Terminal</h2>
+                <p class="auth-subtitle text-center">Scan your RFID card and select location to record attendance.</p>
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+                    <div class="field-wrap">
+                        <label for="rfid_tag">RFID Tag</label>
+                        <input type="text" name="rfid_tag" id="rfid_tag" class="form-control" placeholder="Scan or enter RFID" autofocus required>
+                    </div>
+                    <div class="field-wrap">
+                        <label for="location_id">Location</label>
+                        <select name="location_id" id="location_id" class="form-select" required>
+                            <option value="">-- Select location --</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}">{{ loc.name }} ({{ loc.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" style="height:var(--control-h)"><i class="bi bi-shield-check"></i> Authenticate &amp; Record</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

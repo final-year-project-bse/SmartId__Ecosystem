@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Master Timetable - SmartID{% endblock %}
+{% block sb_timetable_master %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-calendar2-week"></i> Master Timetable / Room Utilization</h1>
+    <p>View weekly slots by location. Manage slots via <a href="{% url 'admin:attendance_timetableslot_changelist' %}">Django Admin → Attendance → Timetable slots</a>.</p>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+            <div>
+                <label class="form-label small mb-0">Filter by location</label>
+                <select name="location" class="form-select form-select-sm" style="min-width:200px" onchange="this.form.submit()">
+                    <option value="">All locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.pk }}" {% if filter_location_id == loc.pk|stringformat:"d" %}selected{% endif %}>{{ loc.name }} ({{ loc.code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> Apply</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+        <h5 style="margin:0;color:var(--color-text-primary)"><i class="bi bi-list-ul" style="color:var(--color-primary);margin-right:.5rem"></i>Timetable Slots</h5>
+    </div>
+    <div style="padding:0 1.25rem 1.25rem">
+        {% if slots %}
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Time</th>
+                        <th>Course</th>
+                        <th>Professor</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in slots %}
+                    <tr>
+                        <td style="font-weight:600;color:var(--color-text-primary)">{{ s.get_day_of_week_display }}</td>
+                        <td style="white-space:nowrap">{{ s.start_time|time:"H:i" }} – {{ s.end_time|time:"H:i" }}</td>
+                        <td><span style="background:var(--color-primary-bg);color:var(--color-primary);padding:2px 8px;border-radius:20px;font-size:.8rem;font-weight:600">{{ s.course.code }}</span> {{ s.course.name }}</td>
+                        <td style="color:var(--color-text-secondary)">{{ s.professor.get_full_name }}</td>
+                        <td style="color:var(--color-text-secondary)">{{ s.location.name }} <span class="text-muted small">({{ s.location.code }})</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-calendar-x" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+            <h6 style="color:var(--color-text-primary)">No timetable slots</h6>
+            <p style="color:var(--color-text-muted)">Add slots in <a href="{% url 'admin:attendance_timetableslot_add' %}">Django Admin → Attendance → Timetable slots → Add</a>.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
