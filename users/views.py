@@ -26,13 +26,21 @@ def home(request):
 # ---------------------------------------------------------------------------
 
 class LoginView(FormView):
-    """Credential-based login; biometric/RFID at terminal."""
+    """Credential-based login for students, professors, parents. Admins must use admin login."""
     template_name = 'users/login.html'
     form_class = CustomAuthenticationForm
     success_url = reverse_lazy('dashboard:home')
 
     def form_valid(self, form):
-        login(self.request, form.get_user())
+        user = form.get_user()
+        if _is_admin(user):
+            form.add_error(
+                None,
+                'This login is for students, professors, and parents. '
+                'Administrator accounts must use the admin login page.',
+            )
+            return self.form_invalid(form)
+        login(self.request, user)
         return redirect(self.success_url)
 
     def form_invalid(self, form):
@@ -47,10 +55,10 @@ class LoginView(FormView):
 
 
 class AdminLoginView(FormView):
-    """Admin-only login with role validation."""
+    """Admin-only login with role validation. Redirects to admin dashboard (home)."""
     template_name = 'users/admin_login.html'
     form_class = CustomAuthenticationForm
-    success_url = reverse_lazy('dashboard:analytics')
+    success_url = reverse_lazy('dashboard:home')  # Admin dashboard (staff_home for admin users)
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:

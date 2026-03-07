@@ -38,6 +38,7 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **kwargs):
         kwargs.setdefault('is_staff', True)
         kwargs.setdefault('is_superuser', True)
+        kwargs.setdefault('role', self.model.Role.ADMIN)
         return self.create_user(email, password, **kwargs)
 
 
@@ -51,7 +52,7 @@ class User(AbstractUser):
 
     username = None
     email = models.EmailField(unique=True)
-    institutional_id = models.CharField(max_length=50, unique=True)
+    institutional_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
     phone = models.CharField(max_length=20, blank=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
@@ -68,7 +69,7 @@ class User(AbstractUser):
         ]
 
     def __str__(self):
-        return f"{self.get_full_name()} ({self.institutional_id})"
+        return f"{self.get_full_name()} ({self.institutional_id or '—'})"
 
 
 class ConsentRecord(models.Model):

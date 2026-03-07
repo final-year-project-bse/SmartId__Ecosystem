@@ -8,12 +8,17 @@ from django.contrib.auth.decorators import login_required
 
 
 def role_required(*allowed_roles):
-    """Decorator that enforces login + role membership."""
+    """Decorator that enforces login + role membership. Staff/superuser always have access."""
     def decorator(view_func):
         @wraps(view_func)
         @login_required
         def _wrapped(request, *args, **kwargs):
-            if request.user.role in allowed_roles or request.user.is_superuser:
+            user = request.user
+            if (
+                user.role in allowed_roles
+                or getattr(user, 'is_superuser', False)
+                or getattr(user, 'is_staff', False)
+            ):
                 return view_func(request, *args, **kwargs)
             messages.warning(request, 'You do not have permission to access that page.')
             return redirect('dashboard:home')

@@ -5,7 +5,7 @@ import re
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.password_validation import validate_password
-from .models import User, ConsentRecord, AuthMethod
+from .models import User, ConsentRecord, UserAuthMethod, AuthMethod
 
 # Registration number format: XX00-XXX-000 (e.g. FA22-BSE-069)
 REGISTRATION_NUMBER_REGEX = re.compile(r'^[A-Za-z]{2}\d{2}-[A-Za-z]{3}-\d{3}$')
@@ -129,9 +129,9 @@ class AdminUserCreateForm(forms.ModelForm):
         help_text='Required if authentication method is RFID.',
     )
     data_retention = forms.BooleanField(
-        required=True,
+        required=False,
         label='Data retention policy acknowledged',
-        help_text='The user acknowledges that their data will be stored and managed per institutional policy.',
+        help_text='The user acknowledges that their data will be stored and managed per institutional policy. Not required for parents.',
     )
     # Optional: RFID tag when method is RFID (wizard step 3)
     rfid_tag = forms.CharField(
@@ -149,10 +149,17 @@ class AdminUserCreateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['institutional_id'].label = 'Registration number'
-        self.fields['institutional_id'].help_text = 'Format: XX00-XXX-000 (e.g. FA22-BSE-069). Students use this to sign in.'
+        self.fields['institutional_id'].required = False
+        self.fields['institutional_id'].help_text = 'Required for students (format XX00-XXX-000, e.g. FA22-BSE-069). Optional for professors and parents.'
 
     def clean_institutional_id(self):
-        id_val = self.cleaned_data.get('institutional_id')
+        id_val = self.cleaned_data.get('institutional_id') or ''
+        id_val = (id_val or '').strip()
+        role = self.data.get('role') or self.initial.get('role')  # role may not be in cleaned_data yet
+        if not id_val:
+            if role == User.Role.STUDENT:
+                raise forms.ValidationError('Registration number is required for students.')
+            return None  # professor/parent may leave blank
         id_val = validate_registration_number(id_val)
         if User.objects.filter(institutional_id=id_val).exists():
             raise forms.ValidationError('A user with this registration number already exists.')
@@ -169,6 +176,12 @@ class AdminUserCreateForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
+        role = data.get('role')
+        if role == User.Role.PARENT:
+            # Parents use email/password only; no consent required
+            return data
+        if not data.get('data_retention'):
+            raise forms.ValidationError('Data retention policy must be acknowledged for this role.')
         method = data.get('auth_method')
         if method == AuthMethod.RFID and not data.get('consent_rfid'):
             raise forms.ValidationError('RFID consent is required when selecting RFID authentication.')
@@ -185,7 +198,39 @@ class AdminUserCreateForm(forms.ModelForm):
 
 
 class AdminUserEditForm(forms.ModelForm):
-    """Admin edits an existing user (no password field)."""
+    """
+    Admin edits an existing user. Includes consent + auth method so the edit wizard
+    shows Step 2 (consent) and Step 3 (add authentication data) correctly.
+    """
+    # Same consent + auth fields as create form so the shared wizard template works
+    auth_method = forms.ChoiceField(
+        choices=AuthMethod.choices,
+        label='Authentication Method',
+        help_text='Select the primary authentication method for this user.',
+    )
+    consent_biometric = forms.BooleanField(
+        required=False,
+        label='Biometric data consent (face / fingerprint)',
+        help_text='Required if authentication method is Face or Fingerprint.',
+    )
+    consent_rfid = forms.BooleanField(
+        required=False,
+        label='RFID data consent',
+        help_text='Required if authentication method is RFID.',
+    )
+    data_retention = forms.BooleanField(
+        required=False,
+        label='Data retention policy acknowledged',
+        help_text='Not required for parents.',
+    )
+    rfid_tag = forms.CharField(
+        required=False,
+        max_length=100,
+        label='RFID tag',
+        help_text='Scan or enter the RFID card tag. Leave blank if already registered or to add later.',
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password', 'placeholder': 'Scan card or enter tag'}),
+    )
+
     class Meta:
         model = User
         fields = ('email', 'institutional_id', 'first_name', 'last_name', 'role', 'phone', 'is_active')
@@ -193,10 +238,43 @@ class AdminUserEditForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['institutional_id'].label = 'Registration number'
-        self.fields['institutional_id'].help_text = 'Format: XX00-XXX-000 (e.g. FA22-BSE-069).'
+        self.fields['institutional_id'].required = False
+        self.fields['institutional_id'].help_text = 'Required for students (XX00-XXX-000). Optional for professors and parents.'
+        # Prefill consent and auth method from existing records (edit mode)
+        if self.instance and self.instance.pk:
+            try:
+                consent = self.instance.consent
+                self.fields['consent_biometric'].initial = consent.biometric_consent
+                self.fields['consent_rfid'].initial = consent.rfid_consent
+                self.fields['data_retention'].initial = consent.data_retention_ack
+            except ConsentRecord.DoesNotExist:
+                pass
+            try:
+                pref = self.instance.auth_method_preference
+                self.fields['auth_method'].initial = pref.method
+            except UserAuthMethod.DoesNotExist:
+                self.fields['auth_method'].initial = AuthMethod.RFID
+
+    def clean(self):
+        data = super().clean()
+        if data.get('role') == User.Role.PARENT:
+            return data  # Parents: no consent required
+        if not data.get('data_retention'):
+            raise forms.ValidationError('Data retention policy must be acknowledged for this role.')
+        method = data.get('auth_method')
+        if method == AuthMethod.RFID and not data.get('consent_rfid'):
+            raise forms.ValidationError('RFID consent is required when selecting RFID authentication.')
+        if method in (AuthMethod.FACE, AuthMethod.FINGERPRINT) and not data.get('consent_biometric'):
+            raise forms.ValidationError('Biometric consent is required for face or fingerprint authentication.')
+        return data
 
     def clean_institutional_id(self):
-        id_val = self.cleaned_data.get('institutional_id')
+        id_val = (self.cleaned_data.get('institutional_id') or '').strip()
+        role = self.data.get('role') or (self.instance.role if self.instance else None)
+        if not id_val:
+            if role == User.Role.STUDENT:
+                raise forms.ValidationError('Registration number is required for students.')
+            return None
         id_val = validate_registration_number(id_val)
         qs = User.objects.filter(institutional_id=id_val)
         if self.instance.pk:

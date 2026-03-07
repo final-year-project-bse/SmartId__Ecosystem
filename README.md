@@ -46,7 +46,7 @@
    ```bash
    python manage.py createsuperuser
    ```
-   Use email as username. Then in Django Admin set **institutional_id** and **role** (e.g. admin).
+   Use email as username. The account is created with the Administrator role. Set **institutional_id** in Django Admin (`/admin/`). Admin accounts must use **Admin login** (`/login/admin/`); they cannot use the regular login page.
 
 6. **Create locations (for attendance):**  
    Log in to `/admin/`, go to **Attendance → Locations**, add e.g. "Main Gate (GATE-01)", "Lab 1 (LAB-01)".
@@ -62,21 +62,34 @@
 | URL | Description |
 |-----|-------------|
 | `/` | Home (login/enroll links) |
-| `/login/` | Web login (email + password) |
-| `/enroll/` | User enrollment (UC-1) |
+| `/login/` | Web login (students, professors, parents) |
+| `/login/admin/` | Admin-only login (administrators) |
+| `/dashboard/manage-users/create/` | Enroll new user (admin; UC-1) |
 | `/attendance/terminal/` | RFID terminal login & attendance |
-| `/dashboard/` | Role-based dashboard (student / professor / admin) |
+| `/dashboard/` | Role-based dashboard home (see below) |
 | `/dashboard/reports/` | Attendance reports (daily/weekly/monthly) |
 | `/dashboard/analytics/` | Admin analytics (UC-7) |
 | `/dashboard/manage-users/` | Admin user list |
 | `/notifications/` | User notifications (UC-5) |
 | `/admin/` | Django admin (users, locations, sessions, logs) |
 
+## Dashboards by role (same URL `/dashboard/`, content depends on role)
+
+| Role | Dashboard | URL | What they see |
+|------|-----------|-----|----------------|
+| **Student** | Student dashboard | `/dashboard/` | Own attendance records (last 20). |
+| **Professor** | Staff dashboard | `/dashboard/` | Overview (user counts, sessions, weekly/today attendance). Access to **Reports** (`/dashboard/reports/`). |
+| **Admin** | Staff dashboard | `/dashboard/` | Same as professor + **Analytics** (`/dashboard/analytics/`), **User Management** (`/dashboard/manage-users/`), **Locations**, **System health**, etc. Use admin login at `/login/admin/`. |
+| **Parent** | Parent dashboard | `/dashboard/` | Linked children: enrollment, attendance, pending leave requests. |
+
+All roles use the same **dashboard home** URL: **`/dashboard/`**. After login they are redirected there and see the template for their role (student_home, staff_home, or parent_home).
+
 ## Roles
 
-- **Student:** Dashboard with own attendance; can use Terminal (RFID) to mark attendance.
-- **Professor:** Dashboard + Reports (view attendance by user/location).
+- **Student:** Dashboard with own attendance; registration number required; can use Terminal (RFID) to mark attendance.
+- **Professor:** Staff dashboard + Reports; registration number **not** required when enrolling.
 - **Admin:** All of the above + Analytics, Manage Users, Django Admin.
+- **Parent:** Parent dashboard (linked children); registration number and biometric/RFID consent **not** required; sign in with email and password only.
 
 ## Optional Environment Variables
 
@@ -88,3 +101,5 @@
 ## Project Source
 
 Built from **Scope Document** and **SRS Document** (SmartID Ecosystem, COMSATS University Islamabad, Sahiwal Campus).
+
+

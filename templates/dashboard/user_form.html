@@ -61,21 +61,26 @@
                         </div>
                         <div class="field-wrap">{{ form.role.label_tag }}{{ form.role }}{% if form.role.errors %}<div class="field-error">{{ form.role.errors.0 }}</div>{% endif %}</div>
                         <div class="field-wrap">{{ form.phone.label_tag }}{{ form.phone }}{% if form.phone.help_text %}<div class="help">{{ form.phone.help_text }}</div>{% endif %}{% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}</div>
+                        {% if 'password1' in form.fields %}
                         <div class="field-wrap">{{ form.password1.label_tag }}{{ form.password1 }}{% if form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}</div>
                         <div class="field-wrap">{{ form.password2.label_tag }}{{ form.password2 }}{% if form.password2.errors %}<div class="field-error">{{ form.password2.errors.0 }}</div>{% endif %}</div>
+                        {% endif %}
                         <div class="wizard-actions">
                             <button type="button" class="btn btn-primary" onclick="wizardNext()">Next</button>
                             <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
                         </div>
                     </div>
 
-                    {# ── Step 2: Consent & authentication method ── #}
+                    {# ── Step 2: Consent & authentication method (simplified for parents) ── #}
                     <div class="wizard-step" data-step="2">
                         <div class="wizard-step-title"><i class="bi bi-shield-check"></i> Step 2 — Consent & authentication</div>
-                        <div class="field-wrap">{{ form.auth_method.label_tag }}{% if form.auth_method.help_text %}<div class="help">{{ form.auth_method.help_text }}</div>{% endif %}{{ form.auth_method }}{% if form.auth_method.errors %}<div class="field-error">{{ form.auth_method.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_biometric }}<label for="{{ form.consent_biometric.id_for_label }}">{{ form.consent_biometric.label }}</label></div>{% if form.consent_biometric.help_text %}<div class="help">{{ form.consent_biometric.help_text }}</div>{% endif %}{% if form.consent_biometric.errors %}<div class="field-error">{{ form.consent_biometric.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_rfid }}<label for="{{ form.consent_rfid.id_for_label }}">{{ form.consent_rfid.label }}</label></div>{% if form.consent_rfid.help_text %}<div class="help">{{ form.consent_rfid.help_text }}</div>{% endif %}{% if form.consent_rfid.errors %}<div class="field-error">{{ form.consent_rfid.errors.0 }}</div>{% endif %}</div>
+                        <div class="consent-for-staff" id="consent-for-staff">
+                            <div class="field-wrap">{{ form.auth_method.label_tag }}{% if form.auth_method.help_text %}<div class="help">{{ form.auth_method.help_text }}</div>{% endif %}{{ form.auth_method }}{% if form.auth_method.errors %}<div class="field-error">{{ form.auth_method.errors.0 }}</div>{% endif %}</div>
+                            <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_biometric }}<label for="{{ form.consent_biometric.id_for_label }}">{{ form.consent_biometric.label }}</label></div>{% if form.consent_biometric.help_text %}<div class="help">{{ form.consent_biometric.help_text }}</div>{% endif %}{% if form.consent_biometric.errors %}<div class="field-error">{{ form.consent_biometric.errors.0 }}</div>{% endif %}</div>
+                            <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_rfid }}<label for="{{ form.consent_rfid.id_for_label }}">{{ form.consent_rfid.label }}</label></div>{% if form.consent_rfid.help_text %}<div class="help">{{ form.consent_rfid.help_text }}</div>{% endif %}{% if form.consent_rfid.errors %}<div class="field-error">{{ form.consent_rfid.errors.0 }}</div>{% endif %}</div>
+                        </div>
                         <div class="field-wrap"><div class="checkbox-wrap">{{ form.data_retention }}<label for="{{ form.data_retention.id_for_label }}">{{ form.data_retention.label }}</label></div>{% if form.data_retention.help_text %}<div class="help">{{ form.data_retention.help_text }}</div>{% endif %}{% if form.data_retention.errors %}<div class="field-error">{{ form.data_retention.errors.0 }}</div>{% endif %}</div>
+                        <p class="parent-only-msg mb-3" id="step2-parent-msg" style="display:none;color:var(--color-text-secondary);font-size:0.95rem;">Parents sign in with email and password only. No biometric or RFID consent needed.</p>
                         <div class="wizard-actions">
                             <button type="button" class="btn btn-ghost" onclick="wizardPrev()">Previous</button>
                             <button type="button" class="btn btn-primary" onclick="wizardNext()">Next</button>
@@ -110,6 +115,10 @@
                                 <button type="submit" class="btn btn-ghost"><i class="bi bi-skip-forward"></i> Skip — add later</button>
                             </div>
                         </div>
+                        <div class="method-panel" id="panel-parent" data-method="parent">
+                            <p style="margin:0;color:var(--color-text-secondary);font-size:0.95rem"><i class="bi bi-person-check"></i> Parents use <strong>email and password</strong> only. No face, fingerprint, or RFID enrollment is required.</p>
+                            <p style="margin:0.5rem 0 0;color:var(--color-text-muted);font-size:0.9rem">Click <strong>Save</strong> below to complete.</p>
+                        </div>
 
                         <div class="wizard-actions">
                             <button type="button" class="btn btn-ghost" onclick="wizardPrev()">Previous</button>
@@ -137,9 +146,19 @@ function showStep(step) {
         if (n === step) el.classList.add('active');
         else if (n < step) el.classList.add('done');
     });
-    // Step 3: show method panel based on auth_method selection
+    // Step 2: for parents, hide auth method and biometric/RFID consent; show parent message
+    var roleSel = document.querySelector('select[name=role]');
+    var role = (roleSel ? roleSel.value : '').toLowerCase();
+    var consentStaff = document.getElementById('consent-for-staff');
+    var parentMsg = document.getElementById('step2-parent-msg');
+    if (consentStaff) consentStaff.style.display = role === 'parent' ? 'none' : 'block';
+    if (parentMsg) parentMsg.style.display = role === 'parent' ? 'block' : 'none';
+
+    // Step 3: show method panel — parents get panel-parent; others use auth_method
     if (step === 3) {
-        var method = (document.querySelector('select[name=auth_method]') || {}).value || '';
+        var sel = document.querySelector('select[name=auth_method]');
+        var method = (sel ? sel.value : '').toLowerCase();
+        if (role === 'parent') method = 'parent';
         document.querySelectorAll('.method-panel').forEach(function(panel) {
             panel.classList.toggle('active', panel.getAttribute('data-method') === method);
         });
@@ -206,14 +225,32 @@ function wizardPrev() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    function updateStep2ForRole() {
+        var role = (document.querySelector('select[name=role]') || {}).value || '';
+        role = role.toLowerCase();
+        var c = document.getElementById('consent-for-staff');
+        var m = document.getElementById('step2-parent-msg');
+        if (c) c.style.display = role === 'parent' ? 'none' : 'block';
+        if (m) m.style.display = role === 'parent' ? 'block' : 'none';
+    }
+    function updateStep3Panel() {
+        if (currentStep !== 3) return;
+        var role = (document.querySelector('select[name=role]') || {}).value || '';
+        role = role.toLowerCase();
+        var method = (document.querySelector('select[name=auth_method]') || {}).value || '';
+        method = method.toLowerCase();
+        if (role === 'parent') method = 'parent';
+        document.querySelectorAll('.method-panel').forEach(function(panel) {
+            panel.classList.toggle('active', panel.getAttribute('data-method') === method);
+        });
+        if (method !== 'face') stopFaceCamera();
+    }
+    var roleSel = document.querySelector('select[name=role]');
+    if (roleSel) {
+        roleSel.addEventListener('change', function() { updateStep2ForRole(); updateStep3Panel(); });
+    }
     document.querySelector('select[name=auth_method]').addEventListener('change', function() {
-        if (currentStep === 3) {
-            var method = this.value;
-            document.querySelectorAll('.method-panel').forEach(function(panel) {
-                panel.classList.toggle('active', panel.getAttribute('data-method') === method);
-            });
-            if (method !== 'face') stopFaceCamera();
-        }
+        if (currentStep === 3) updateStep3Panel();
     });
 
     var btnStart = document.getElementById('btnStartFaceCam');

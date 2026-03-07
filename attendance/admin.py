@@ -31,6 +31,15 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = ('code', 'name', 'professor', 'location', 'is_active')
     list_filter = ('is_active', 'day_of_week')
     search_fields = ('code', 'name')
+    filter_horizontal = ('locations',)
+    fieldsets = (
+        (None, {'fields': ('code', 'name', 'professor', 'description', 'is_active')}),
+        ('Locations', {
+            'fields': ('location', 'locations'),
+            'description': 'Primary location (optional) and all locations used for this course (e.g. lecture classroom + lab). Link lectures to both classrooms and labs here; then set each slot in Timetable to the specific location.',
+        }),
+        ('Legacy schedule (optional)', {'fields': ('day_of_week', 'start_time', 'end_time'), 'classes': ('collapse',)}),
+    )
 
 
 @admin.register(CourseEnrollment)

@@ -24,6 +24,7 @@ class UserModelTest(TestCase):
         )
         self.assertTrue(su.is_staff)
         self.assertTrue(su.is_superuser)
+        self.assertEqual(su.role, User.Role.ADMIN)
 
 
 class LoginViewTest(TestCase):
@@ -50,6 +51,19 @@ class LoginViewTest(TestCase):
             'username': 'stu@campus.edu', 'password': 'wrong',
         })
         self.assertEqual(resp.status_code, 200)
+
+    def test_admin_cannot_use_regular_login(self):
+        """Admin credentials must use /login/admin/; they are rejected on /login/."""
+        User.objects.create_user(
+            email='adm@campus.edu', password='adminpass',
+            institutional_id='ADM100', role=User.Role.ADMIN,
+            first_name='Ad', last_name='Min',
+        )
+        resp = self.client.post(reverse('users:login'), {
+            'username': 'adm@campus.edu', 'password': 'adminpass',
+        })
+        self.assertEqual(resp.status_code, 200)  # stays on login page, not redirect to dashboard
+        self.assertContains(resp, 'admin login')
 
 
 class AdminLoginViewTest(TestCase):

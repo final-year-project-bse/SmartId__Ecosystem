@@ -26,7 +26,7 @@ class Location(models.Model):
 # ---------------------------------------------------------------------------
 
 class Course(models.Model):
-    """Academic course/subject linked to a professor and location."""
+    """Academic course/subject linked to a professor and locations (e.g. classroom + lab)."""
     name = models.CharField(max_length=150)
     code = models.CharField(max_length=20, unique=True)
     professor = models.ForeignKey(
@@ -37,6 +37,11 @@ class Course(models.Model):
     location = models.ForeignKey(
         Location, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='courses',
+        help_text='Primary/default location (e.g. main classroom).',
+    )
+    locations = models.ManyToManyField(
+        Location, blank=True, related_name='courses_using',
+        help_text='All locations used for this course (lecture classroom, lab, etc.). Use Timetable to assign which location per slot.',
     )
     description = models.TextField(blank=True)
     # Schedule fields
