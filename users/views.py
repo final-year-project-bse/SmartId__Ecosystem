@@ -9,9 +9,14 @@ from django.contrib import messages
 from django.views.generic import FormView
 from django.urls import reverse_lazy
 
-from .models import User
+from .models import User, FailedLoginAttempt
 from .forms import CustomAuthenticationForm, ProfileEditForm
 from notifications.utils import notify_admins
+
+
+def _get_client_ip(request):
+    x = request.META.get('HTTP_X_FORWARDED_FOR')
+    return (x.split(',')[0].strip() if x else request.META.get('REMOTE_ADDR')) or None
 
 
 def home(request):
@@ -26,26 +31,23 @@ def home(request):
 # ---------------------------------------------------------------------------
 
 class LoginView(FormView):
-    """Credential-based login for students, professors, parents. Admins must use admin login."""
+    """Credential-based login; biometric/RFID at terminal."""
     template_name = 'users/login.html'
     form_class = CustomAuthenticationForm
     success_url = reverse_lazy('dashboard:home')
 
     def form_valid(self, form):
-        user = form.get_user()
-        if _is_admin(user):
-            form.add_error(
-                None,
-                'This login is for students, professors, and parents. '
-                'Administrator accounts must use the admin login page.',
-            )
-            return self.form_invalid(form)
-        login(self.request, user)
+        login(self.request, form.get_user())
         return redirect(self.success_url)
 
     def form_invalid(self, form):
-        # Notify admins on failed login attempts (FR-10)
-        identifier = form.data.get('username', 'unknown')
+        # Notify admins and record for analytics (FR-10)
+        identifier = (form.data.get('username') or 'unknown').strip()[:255]
+        FailedLoginAttempt.objects.create(
+            identifier=identifier,
+            is_admin_attempt=False,
+            ip_address=_get_client_ip(self.request),
+        )
         notify_admins(
             'Failed Login Attempt',
             f'A failed login attempt was made for identifier: {identifier}.',
@@ -55,10 +57,10 @@ class LoginView(FormView):
 
 
 class AdminLoginView(FormView):
-    """Admin-only login with role validation. Redirects to admin dashboard (home)."""
+    """Admin-only login with role validation."""
     template_name = 'users/admin_login.html'
     form_class = CustomAuthenticationForm
-    success_url = reverse_lazy('dashboard:home')  # Admin dashboard (staff_home for admin users)
+    success_url = reverse_lazy('dashboard:analytics')
 
     def get(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -79,7 +81,12 @@ class AdminLoginView(FormView):
         return redirect(self.success_url)
 
     def form_invalid(self, form):
-        identifier = form.data.get('username', 'unknown')
+        identifier = (form.data.get('username') or 'unknown').strip()[:255]
+        FailedLoginAttempt.objects.create(
+            identifier=identifier,
+            is_admin_attempt=True,
+            ip_address=_get_client_ip(self.request),
+        )
         notify_admins(
             'Failed Admin Login Attempt',
             f'A failed admin login attempt was made for identifier: {identifier}.',

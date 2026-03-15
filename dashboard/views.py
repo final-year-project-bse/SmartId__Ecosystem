@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from datetime import timedelta
 
-from users.models import User, ConsentRecord, UserAuthMethod, AuthMethod, RFIDCredential
+from users.models import User, ConsentRecord, UserAuthMethod, AuthMethod, RFIDCredential, FailedLoginAttempt
 from users.decorators import admin_required, staff_required
 from users.forms import AdminUserCreateForm, AdminUserEditForm, RFIDEnrollForm
 from attendance.models import AttendanceRecord, AttendanceSession, Location, AccessLog, Course, CourseEnrollment, TimetableSlot
@@ -29,29 +29,26 @@ from .models import SystemDevice, SystemSetting, AlertRule
 def home(request):
     """Role-based home: student -> own records; prof/admin -> dashboard; parent -> basic."""
     user = request.user
-    # Staff/superuser always see admin dashboard even if role was left as student
-    is_staff_or_admin = (
-        user.role in (User.Role.PROFESSOR, User.Role.ADMIN)
-        or getattr(user, 'is_staff', False)
-        or getattr(user, 'is_superuser', False)
-    )
-    if user.role == User.Role.STUDENT and not is_staff_or_admin:
+    if user.role == User.Role.STUDENT:
         records = (
             AttendanceRecord.objects
             .filter(user=user)
             .select_related('session', 'location')[:20]
         )
         return render(request, 'dashboard/student_home.html', {'records': records})
-    if is_staff_or_admin:
+    if user.role in (User.Role.PROFESSOR, User.Role.ADMIN):
         today = timezone.now().date()
         week_ago = today - timedelta(days=7)
+        total_users = User.objects.filter(is_active=True).count()
+        total_students = User.objects.filter(role=User.Role.STUDENT, is_active=True).count()
         ctx = {
-            'total_users': User.objects.filter(is_active=True).count(),
-            'total_students': User.objects.filter(role=User.Role.STUDENT, is_active=True).count(),
+            'total_users': total_users,
+            'total_students': total_students,
             'total_professors': User.objects.filter(role=User.Role.PROFESSOR, is_active=True).count(),
             'active_sessions': AttendanceSession.objects.filter(ended_at__isnull=True).count(),
             'weekly_attendance': AttendanceRecord.objects.filter(marked_at__date__gte=week_ago).count(),
             'today_attendance': AttendanceRecord.objects.filter(marked_at__date=today).count(),
+            'student_pct': round(total_students / total_users * 100) if total_users else 0,
         }
         return render(request, 'dashboard/staff_home.html', ctx)
     if user.role == User.Role.PARENT:
@@ -175,7 +172,9 @@ def analytics(request):
     total_professors = User.objects.filter(role=User.Role.PROFESSOR, is_active=True).count()
     attendance_count = AttendanceRecord.objects.filter(marked_at__date__gte=week_ago).count()
     access_logs = AccessLog.objects.filter(accessed_at__date__gte=week_ago).select_related('user', 'location')
-    failed_logins = access_logs.filter(success=False).count()
+    failed_web_logins = FailedLoginAttempt.objects.filter(created_at__date__gte=week_ago).count()
+    failed_terminal_logins = access_logs.filter(success=False).count()
+    failed_logins = failed_web_logins + failed_terminal_logins
     successful_logins = access_logs.filter(success=True).count()
     
     # ── Chart Data: 7-day attendance trend ──
@@ -270,17 +269,17 @@ def create_user(request):
                 data_retention_ack=form.cleaned_data.get('data_retention', False),
                 ip_address=_get_client_ip(request),
             )
-            # ── Set authentication method (parents use email/password only; store a placeholder) ──
-            method = form.cleaned_data.get('auth_method') or AuthMethod.RFID
+            # ── Set authentication method ──
+            method = form.cleaned_data['auth_method']
             UserAuthMethod.objects.create(user=user, method=method)
             notify_admins(
                 'New User Enrolled',
-                f'User {user.get_full_name()} ({user.institutional_id or "no reg#"}) was enrolled by '
+                f'User {user.get_full_name()} ({user.institutional_id}) was enrolled by '
                 f'{request.user.get_full_name()} with {dict(AuthMethod.choices).get(method, method)} auth.',
                 notification_type='system',
             )
-            # ── RFID: only for non-parents; parents use email/password only ──
-            if user.role != User.Role.PARENT and method == AuthMethod.RFID:
+            # ── RFID: register tag if provided in wizard, else redirect to enroll page ──
+            if method == AuthMethod.RFID:
                 rfid_tag = form.cleaned_data.get('rfid_tag', '').strip()
                 if rfid_tag:
                     from users.models import RFIDCredential
@@ -332,46 +331,13 @@ def enroll_rfid(request, user_id):
 
 @admin_required
 def edit_user(request, user_id):
-    """Admin edits a user (basic info, consent, auth method, and optional RFID)."""
+    """Admin edits a user."""
     target = get_object_or_404(User, pk=user_id)
     if request.method == 'POST':
         form = AdminUserEditForm(request.POST, instance=target)
         if form.is_valid():
             form.save()
-            # ── Admin accounts must stay active ──
-            if _is_admin_user(target) and not target.is_active:
-                target.is_active = True
-                target.save(update_fields=['is_active'])
-            # ── Update consent record ──
-            consent, _ = ConsentRecord.objects.get_or_create(
-                user=target,
-                defaults={
-                    'biometric_consent': False,
-                    'rfid_consent': False,
-                    'data_retention_ack': False,
-                    'ip_address': _get_client_ip(request),
-                },
-            )
-            consent.biometric_consent = form.cleaned_data.get('consent_biometric', False)
-            consent.rfid_consent = form.cleaned_data.get('consent_rfid', False)
-            consent.data_retention_ack = form.cleaned_data.get('data_retention', False)
-            consent.save()
-            # ── Update auth method ──
-            method = form.cleaned_data.get('auth_method', AuthMethod.RFID)
-            pref, _ = UserAuthMethod.objects.get_or_create(user=target, defaults={'method': method})
-            pref.method = method
-            pref.save()
-            # ── Optional: register RFID tag if provided ──
-            if method == AuthMethod.RFID:
-                rfid_tag = form.cleaned_data.get('rfid_tag', '').strip()
-                if rfid_tag:
-                    cred, _ = RFIDCredential.objects.get_or_create(user=target)
-                    cred.set_tag(rfid_tag)
-                    messages.success(request, f'User {target.get_full_name()} updated; RFID card registered.')
-                else:
-                    messages.success(request, f'User {target.get_full_name()} updated.')
-            else:
-                messages.success(request, f'User {target.get_full_name()} updated.')
+            messages.success(request, f'User {target.get_full_name()} updated.')
             return redirect('dashboard:manage_users')
     else:
         form = AdminUserEditForm(instance=target)
@@ -383,33 +349,21 @@ def edit_user(request, user_id):
     })
 
 
-def _is_admin_user(user):
-    """True if user is an administrator (role admin, staff, or superuser)."""
-    return (
-        getattr(user, 'role', None) == User.Role.ADMIN
-        or getattr(user, 'is_staff', False)
-        or getattr(user, 'is_superuser', False)
-    )
-
-
 @admin_required
 def toggle_user_active(request, user_id):
-    """Activate or deactivate a user account. Admin accounts cannot be deactivated."""
+    """Activate or deactivate a user account."""
     if request.method != 'POST':
         return redirect('dashboard:manage_users')
     target = get_object_or_404(User, pk=user_id)
     if target == request.user:
         messages.error(request, 'You cannot deactivate your own account.')
         return redirect('dashboard:manage_users')
-    if _is_admin_user(target) and target.is_active:
-        messages.error(request, 'Administrator accounts cannot be deactivated.')
-        return redirect('dashboard:manage_users')
     target.is_active = not target.is_active
     target.save(update_fields=['is_active'])
     action = 'activated' if target.is_active else 'deactivated'
     notify_admins(
         f'User Account {action.title()}',
-        f'{target.get_full_name()} ({target.institutional_id or "—"}) was {action} by {request.user.get_full_name()}.',
+        f'{target.get_full_name()} ({target.institutional_id}) was {action} by {request.user.get_full_name()}.',
         notification_type='system',
     )
     messages.success(request, f'{target.get_full_name()} has been {action}.')
@@ -601,8 +555,7 @@ def register_device(request):
 def privacy_compliance(request):
     """
     Privacy Compliance view: lists all users with their consent status.
-    Parents do not need biometric/RFID consent (they use email/password only);
-    they are shown as N/A and do not count as missing consent.
+    Flags users who have NOT signed the Digital Consent Form.
     """
     users = (
         User.objects.filter(is_active=True)
@@ -610,18 +563,15 @@ def privacy_compliance(request):
         .order_by('last_name', 'first_name')
     )
     total = users.count()
-    # Only non-parents need consent; parents are always "compliant" for this purpose
-    need_consent = users.exclude(role=User.Role.PARENT)
-    consented = need_consent.filter(consent__isnull=False).count()
-    missing = need_consent.count() - consented
-    compliance_pct = round(consented / need_consent.count() * 100) if need_consent.count() else 100
+    consented = users.filter(consent__isnull=False).count()
+    missing = total - consented
 
     return render(request, 'dashboard/privacy_compliance.html', {
         'users': users,
         'total_users': total,
         'consented_count': consented,
         'missing_count': missing,
-        'compliance_pct': compliance_pct,
+        'compliance_pct': round(consented / total * 100) if total else 0,
     })
 
 

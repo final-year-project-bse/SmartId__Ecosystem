@@ -90,21 +90,11 @@
                         <td class="text-end" style="padding-right:1.25rem">
                             <div class="d-flex gap-1 justify-content-end">
                                 <a href="{% url 'dashboard:edit_user' u.pk %}" class="btn btn-ghost btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
-                                {% if u.role == 'admin' or u.is_staff or u.is_superuser %}
-                                    {% if u.is_active %}
-                                <span class="btn btn-ghost btn-sm disabled" title="Administrator accounts cannot be deactivated" style="color:var(--color-text-muted);cursor:not-allowed"><i class="bi bi-pause-circle"></i></span>
-                                    {% else %}
-                                <form method="post" action="{% url 'dashboard:toggle_user_active' u.pk %}" class="d-inline">{% csrf_token %}
-                                    <button type="submit" class="btn btn-ghost btn-sm" title="Activate" style="color:var(--color-success)"><i class="bi bi-play-circle"></i></button>
-                                </form>
-                                    {% endif %}
-                                {% else %}
                                 <form method="post" action="{% url 'dashboard:toggle_user_active' u.pk %}" class="d-inline">{% csrf_token %}
                                     <button type="submit" class="btn btn-ghost btn-sm" title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %}" style="color:{% if u.is_active %}var(--color-warning){% else %}var(--color-success){% endif %}">
                                         <i class="bi {% if u.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
                                     </button>
                                 </form>
-                                {% endif %}
                                 <a href="{% url 'dashboard:reset_user_password' u.pk %}" class="btn btn-ghost btn-sm" title="Reset Password"><i class="bi bi-key"></i></a>
                                 {% if u.role == 'parent' %}
                                 <a href="{% url 'dashboard:manage_parent_links' u.pk %}" class="btn btn-ghost btn-sm" title="Link Children" style="color:var(--color-info)"><i class="bi bi-link-45deg"></i></a>

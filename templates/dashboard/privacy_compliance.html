@@ -92,19 +92,12 @@
                                 <div style="width:34px;height:34px;border-radius:50%;background:var(--color-primary-bg);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem">{{ u.first_name|first }}{{ u.last_name|first }}</div>
                                 <div>
                                     <div style="font-weight:600;color:var(--color-text-primary)">{{ u.get_full_name }}</div>
-                                    <small style="color:var(--color-text-muted)">{{ u.institutional_id|default:"—" }}</small>
+                                    <small style="color:var(--color-text-muted)">{{ u.institutional_id }}</small>
                                 </div>
                             </div>
                         </td>
                         <td><span class="role-badge {{ u.role }}">{{ u.get_role_display }}</span></td>
-                        {% if u.role == 'parent' %}
-                        {# Parents do not sign up for facial/fingerprint or RFID; show N/A #}
-                        <td><span style="color:var(--color-text-muted);font-size:.85rem">N/A</span></td>
-                        <td><span style="color:var(--color-text-muted);font-size:.85rem">N/A</span></td>
-                        <td><span style="color:var(--color-text-muted);font-size:.85rem">N/A</span></td>
-                        <td style="color:var(--color-text-muted)">—</td>
-                        <td><span class="status-badge" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-info-circle"></i> Not required</span></td>
-                        {% elif u.consent %}
+                        {% if u.consent %}
                         <td>
                             {% if u.consent.biometric_consent %}
                             <span style="color:var(--color-success)"><i class="bi bi-check-circle-fill"></i></span>

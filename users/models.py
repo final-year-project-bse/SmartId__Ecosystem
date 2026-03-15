@@ -38,7 +38,6 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **kwargs):
         kwargs.setdefault('is_staff', True)
         kwargs.setdefault('is_superuser', True)
-        kwargs.setdefault('role', self.model.Role.ADMIN)
         return self.create_user(email, password, **kwargs)
 
 
@@ -52,7 +51,7 @@ class User(AbstractUser):
 
     username = None
     email = models.EmailField(unique=True)
-    institutional_id = models.CharField(max_length=50, unique=True, blank=True, null=True)
+    institutional_id = models.CharField(max_length=50, unique=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
     phone = models.CharField(max_length=20, blank=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
@@ -69,7 +68,22 @@ class User(AbstractUser):
         ]
 
     def __str__(self):
-        return f"{self.get_full_name()} ({self.institutional_id or '—'})"
+        return f"{self.get_full_name()} ({self.institutional_id})"
+
+
+class FailedLoginAttempt(models.Model):
+    """One row per failed web login (regular or admin). Used for analytics (FR-10)."""
+    identifier = models.CharField(max_length=255, help_text='Email or username attempted')
+    is_admin_attempt = models.BooleanField(default=False, help_text='True if attempt was on admin login page')
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['-created_at']), models.Index(fields=['is_admin_attempt'])]
+
+    def __str__(self):
+        return f"Failed {'admin ' if self.is_admin_attempt else ''}login: {self.identifier} @ {self.created_at}"
 
 
 class ConsentRecord(models.Model):
