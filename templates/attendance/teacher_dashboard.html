@@ -7,45 +7,53 @@
     <p>Welcome, <strong>{{ user.get_full_name }}</strong>. Manage your classes and attendance.</p>
 </div>
 
-{# ── Quick Stats ── #}
+{# ── Quick Stats (clickable tiles) ── #}
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head"><div class="mc-head-left"><div class="mc-icon primary"><i class="bi bi-book"></i></div><div class="mc-title">Courses</div></div></div>
-            <div class="mc-value">{{ total_courses }}</div>
-            <div class="mc-footer"><span>Active courses</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
-        </div>
+        <a href="#your-courses" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head"><div class="mc-head-left"><div class="mc-icon primary"><i class="bi bi-book"></i></div><div class="mc-title">Courses</div></div></div>
+                <div class="mc-value">{{ total_courses }}</div>
+                <div class="mc-footer"><span>Active courses</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
+            </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head"><div class="mc-head-left"><div class="mc-icon success"><i class="bi bi-people"></i></div><div class="mc-title">Students</div></div></div>
-            <div class="mc-value">{{ total_students }}</div>
-            <div class="mc-footer"><span>Across all courses</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill success" style="width:80%"></div></div>
-        </div>
+        <a href="{% if first_course_with_students %}{% url 'attendance:teacher_roster' first_course_with_students.pk %}{% else %}#{% endif %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head"><div class="mc-head-left"><div class="mc-icon success"><i class="bi bi-people"></i></div><div class="mc-title">Students</div></div></div>
+                <div class="mc-value">{{ total_students }}</div>
+                <div class="mc-footer"><span>Across all courses</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill success" style="width:80%"></div></div>
+            </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head"><div class="mc-head-left"><div class="mc-icon info"><i class="bi bi-play-circle"></i></div><div class="mc-title">Active<br>Sessions</div></div>
-            {% if active_sessions %}<span class="mc-badge success">Live</span>{% endif %}</div>
-            <div class="mc-value">{{ active_sessions }}</div>
-            <div class="mc-footer"><span>Currently running</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if active_sessions %}60{% else %}0{% endif %}%"></div></div>
-        </div>
+        <a href="{% url 'attendance:manage_sessions' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head"><div class="mc-head-left"><div class="mc-icon info"><i class="bi bi-play-circle"></i></div><div class="mc-title">Active<br>Sessions</div></div>
+                {% if active_sessions %}<span class="mc-badge success">Live</span>{% endif %}</div>
+                <div class="mc-value">{{ active_sessions }}</div>
+                <div class="mc-footer"><span>Currently running</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if active_sessions %}60{% else %}0{% endif %}%"></div></div>
+            </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head"><div class="mc-head-left"><div class="mc-icon warning"><i class="bi bi-calendar-check"></i></div><div class="mc-title">Today</div></div></div>
-            <div class="mc-value">{{ today_sessions.count }}</div>
-            <div class="mc-footer"><span>Sessions today</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill warning" style="width:{% if today_sessions %}50{% else %}0{% endif %}%"></div></div>
-        </div>
+        <a href="{% url 'attendance:manage_sessions' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head"><div class="mc-head-left"><div class="mc-icon warning"><i class="bi bi-calendar-check"></i></div><div class="mc-title">Today</div></div></div>
+                <div class="mc-value">{{ today_sessions.count }}</div>
+                <div class="mc-footer"><span>Sessions today</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill warning" style="width:{% if today_sessions %}50{% else %}0{% endif %}%"></div></div>
+            </div>
+        </a>
     </div>
 </div>
 
 {# ── Course Cards ── #}
-<h5 style="font-weight:700;color:var(--color-text-primary);margin-bottom:1rem"><i class="bi bi-collection" style="color:var(--color-primary);margin-right:.4rem"></i>Your Courses</h5>
+<h5 id="your-courses" style="font-weight:700;color:var(--color-text-primary);margin-bottom:1rem"><i class="bi bi-collection" style="color:var(--color-primary);margin-right:.4rem"></i>Your Courses</h5>
 {% if courses %}
 <div class="row g-3">
     {% for c in courses %}

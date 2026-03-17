@@ -3,6 +3,7 @@ Admin Dashboard, Reporting, Analytics, and Full User CRUD
 (UC-4, UC-6, UC-7, FR-6, FR-9, FR-10, FR-11, FR-13).
 """
 import csv
+import json
 import time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -11,7 +12,7 @@ from django.db.models import Count, Q, Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.core.paginator import Paginator
-from datetime import timedelta
+from datetime import timedelta, datetime, time as dt_time
 
 from users.models import User, ConsentRecord, UserAuthMethod, AuthMethod, RFIDCredential, FailedLoginAttempt
 from users.decorators import admin_required, staff_required
@@ -78,13 +79,12 @@ def home(request):
 @staff_required
 def reports(request):
     """Attendance reports -- daily, weekly, monthly with CSV export; filter by location and optional date range."""
-    period = request.GET.get('period', 'daily')
-    today = timezone.now().date()
+    period = request.GET.get('period', 'monthly')  # default monthly so reports show data more reliably
+    today = timezone.localtime(timezone.now()).date()
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     if start_date and end_date:
         try:
-            from datetime import datetime
             start = datetime.strptime(start_date, '%Y-%m-%d').date()
             end = datetime.strptime(end_date, '%Y-%m-%d').date()
             if start > end:
@@ -98,12 +98,18 @@ def reports(request):
         elif period == 'monthly':
             start = today - timedelta(days=30)
         else:
-            start = today
+            start = today  # daily
         end = today
+
+    # Use timezone-aware datetime range so records from "today" in local time are included
+    # (make_aware works with ZoneInfo; .localize() is pytz-only and would raise on ZoneInfo)
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(start, dt_time.min), tz)
+    end_dt = timezone.make_aware(datetime.combine(end, dt_time.max), tz)
 
     records = (
         AttendanceRecord.objects
-        .filter(marked_at__date__gte=start, marked_at__date__lte=end)
+        .filter(marked_at__gte=start_dt, marked_at__lte=end_dt)
         .select_related('user', 'session', 'location')
     )
     status_filter = request.GET.get('status', '')
@@ -165,37 +171,45 @@ def reports(request):
 @admin_required
 def analytics(request):
     """Analytics dashboard for admin with Chart.js visualizations."""
-    today = timezone.now().date()
-    week_ago = today - timedelta(days=7)
+    today = timezone.localtime(timezone.now()).date()
+    window_days = 30
+    window_start_date = today - timedelta(days=window_days)
+    tz = timezone.get_current_timezone()
+    start_dt = timezone.make_aware(datetime.combine(window_start_date, dt_time.min), tz)
+    end_dt = timezone.make_aware(datetime.combine(today, dt_time.max), tz)
+
     total_users = User.objects.filter(is_active=True).count()
     total_students = User.objects.filter(role=User.Role.STUDENT, is_active=True).count()
     total_professors = User.objects.filter(role=User.Role.PROFESSOR, is_active=True).count()
-    attendance_count = AttendanceRecord.objects.filter(marked_at__date__gte=week_ago).count()
-    access_logs = AccessLog.objects.filter(accessed_at__date__gte=week_ago).select_related('user', 'location')
-    failed_web_logins = FailedLoginAttempt.objects.filter(created_at__date__gte=week_ago).count()
+    attendance_count = AttendanceRecord.objects.filter(marked_at__gte=start_dt, marked_at__lte=end_dt).count()
+    access_logs = AccessLog.objects.filter(accessed_at__gte=start_dt, accessed_at__lte=end_dt).select_related('user', 'location')
+    failed_web_logins = FailedLoginAttempt.objects.filter(created_at__gte=start_dt, created_at__lte=end_dt).count()
     failed_terminal_logins = access_logs.filter(success=False).count()
     failed_logins = failed_web_logins + failed_terminal_logins
     successful_logins = access_logs.filter(success=True).count()
-    
-    # ── Chart Data: 7-day attendance trend ──
+
+    # ── Chart Data: attendance trend (last 7 days, per calendar day in local tz) ──
     daily_labels = []
     daily_data = []
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
         daily_labels.append(d.strftime('%a'))
+        day_start = timezone.make_aware(datetime.combine(d, dt_time.min), tz)
+        day_end = timezone.make_aware(datetime.combine(d, dt_time.max), tz)
         daily_data.append(
-            AttendanceRecord.objects.filter(marked_at__date=d).count()
+            AttendanceRecord.objects.filter(marked_at__gte=day_start, marked_at__lte=day_end).count()
         )
-    
+
     # ── Chart Data: Attendance by location ──
     from attendance.models import Location
     locations = Location.objects.all()[:6]
     location_labels = [loc.name for loc in locations]
     location_data = [
-        AttendanceRecord.objects.filter(location=loc, marked_at__date__gte=week_ago).count()
+        AttendanceRecord.objects.filter(location=loc, marked_at__gte=start_dt, marked_at__lte=end_dt).count()
         for loc in locations
     ]
-    
+
+    # Pass chart data as JSON so template outputs valid JavaScript (no HTML escaping issues)
     return render(request, 'dashboard/analytics.html', {
         'total_users': total_users,
         'total_students': total_students,
@@ -204,10 +218,10 @@ def analytics(request):
         'failed_logins': failed_logins,
         'successful_logins': successful_logins,
         'access_logs': access_logs[:50],
-        'daily_labels': daily_labels,
-        'daily_data': daily_data,
-        'location_labels': location_labels,
-        'location_data': location_data,
+        'daily_labels': json.dumps(daily_labels),
+        'daily_data': json.dumps(daily_data),
+        'location_labels': json.dumps(location_labels),
+        'location_data': json.dumps(location_data),
     })
 
 

@@ -9,60 +9,68 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
-                    <div class="mc-title">Total<br>Users</div>
+        <a href="{% url 'dashboard:manage_users' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
+                        <div class="mc-title">Total<br>Users</div>
+                    </div>
+                    <span class="mc-badge info">All</span>
                 </div>
-                <span class="mc-badge info">All</span>
+                <div class="mc-value">{{ total_users }}</div>
+                <div class="mc-footer"><span>Registered &amp; active</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
             </div>
-            <div class="mc-value">{{ total_users }}</div>
-            <div class="mc-footer"><span>Registered &amp; active</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon success"><i class="bi bi-mortarboard-fill"></i></div>
-                    <div class="mc-title">Total<br>Students</div>
+        <a href="{% url 'dashboard:manage_users' %}?role=student" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon success"><i class="bi bi-mortarboard-fill"></i></div>
+                        <div class="mc-title">Total<br>Students</div>
+                    </div>
+                    <span class="mc-badge success">Active</span>
                 </div>
-                <span class="mc-badge success">Active</span>
+                <div class="mc-value">{{ total_students }}</div>
+                <div class="mc-footer"><span>Enrolled students</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill success" style="width:{{ student_pct }}%"></div></div>
             </div>
-            <div class="mc-value">{{ total_students }}</div>
-            <div class="mc-footer"><span>Enrolled students</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill success" style="width:{{ student_pct }}%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
-                    <div class="mc-title">Today's<br>Attendance</div>
+        <a href="{% url 'dashboard:reports' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
+                        <div class="mc-title">Today's<br>Attendance</div>
+                    </div>
+                    <span class="mc-badge info">Today</span>
                 </div>
-                <span class="mc-badge info">Today</span>
+                <div class="mc-value">{{ today_attendance }}</div>
+                <div class="mc-footer"><span>Records marked today</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if today_attendance %}65{% else %}0{% endif %}%"></div></div>
             </div>
-            <div class="mc-value">{{ today_attendance }}</div>
-            <div class="mc-footer"><span>Records marked today</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if today_attendance %}65{% else %}0{% endif %}%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon warning"><i class="bi bi-calendar2-check"></i></div>
-                    <div class="mc-title">Active<br>Sessions</div>
+        <a href="{% url 'attendance:manage_sessions' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon warning"><i class="bi bi-calendar2-check"></i></div>
+                        <div class="mc-title">Active<br>Sessions</div>
+                    </div>
+                    {% if active_sessions > 0 %}<span class="mc-badge success">Live</span>{% else %}<span class="mc-badge warning">None</span>{% endif %}
                 </div>
-                {% if active_sessions > 0 %}<span class="mc-badge success">Live</span>{% else %}<span class="mc-badge warning">None</span>{% endif %}
+                <div class="mc-value">{{ active_sessions }}</div>
+                <div class="mc-footer"><span>Currently running</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill warning" style="width:{% if active_sessions %}50{% else %}0{% endif %}%"></div></div>
             </div>
-            <div class="mc-value">{{ active_sessions }}</div>
-            <div class="mc-footer"><span>Currently running</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill warning" style="width:{% if active_sessions %}50{% else %}0{% endif %}%"></div></div>
-        </div>
+        </a>
     </div>
 </div>
 {% endblock %}

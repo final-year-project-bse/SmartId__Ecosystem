@@ -74,7 +74,14 @@ def terminal_success(request):
 
 @login_required
 def attendance_page(request):
-    """Web-based attendance: pick a location, mark attendance."""
+    """Web-based attendance: pick a location, mark attendance. Students must use terminal (RFID/face/fingerprint) or ask teacher."""
+    if request.user.role == User.Role.STUDENT:
+        messages.info(
+            request,
+            'Student attendance is recorded only at the terminal (RFID, face, or fingerprint) or by your teacher. '
+            'If you have issues with the portal or device, ask your teacher to mark you present.',
+        )
+        return redirect('dashboard:home')
     locations = Location.objects.all().order_by('name')
     if request.method == 'POST':
         location_id = request.POST.get('location_id')
@@ -99,7 +106,10 @@ def attendance_page(request):
 
 @login_required
 def mark_attendance(request, location_id):
-    """Quick mark attendance at a specific location."""
+    """Quick mark attendance at a specific location. Not available to students (use terminal or teacher)."""
+    if request.user.role == User.Role.STUDENT:
+        messages.info(request, 'Students must use the terminal (RFID/face/fingerprint) or ask the teacher to mark attendance.')
+        return redirect('dashboard:home')
     location = get_object_or_404(Location, pk=location_id)
     session = _get_or_create_session(location)
     record, created = AttendanceRecord.objects.get_or_create(
@@ -180,14 +190,29 @@ def start_session(request):
         slot_id = request.POST.get('slot_id') or None
         location_id = request.POST.get('location_id')
         course_id = request.POST.get('course_id') or None
+        # If the form was pre-filled from a suggested timetable slot, it includes a hidden slot_id.
+        # But if the user manually changed Location/Course, we must NOT force the suggested slot.
         if slot_id:
-            slot = TimetableSlot.objects.filter(pk=slot_id).select_related('location', 'course').first()
-            if slot and (request.user.role == User.Role.ADMIN or slot.professor_id == request.user.id):
+            slot = (
+                TimetableSlot.objects
+                .filter(pk=slot_id)
+                .select_related('location', 'course')
+                .first()
+            )
+            slot_allowed = bool(slot) and (request.user.role == User.Role.ADMIN or slot.professor_id == request.user.id)
+            manual_override = False
+            if slot_allowed:
+                if location_id and str(slot.location_id) != str(location_id):
+                    manual_override = True
+                if course_id and str(slot.course_id) != str(course_id):
+                    manual_override = True
+            if slot_allowed and not manual_override:
                 location = slot.location
                 course = slot.course
                 existing = AttendanceSession.objects.filter(location=location, ended_at__isnull=True).first()
                 if existing:
-                    messages.warning(request, f'An active session already exists for {location.name}.')
+                    existing_label = existing.course.code if existing.course else 'No course'
+                    messages.warning(request, f'An active session already exists for {location.name} ({existing_label}).')
                 else:
                     AttendanceSession.objects.create(
                         location=location, course=course, slot=slot, created_by=request.user,
@@ -198,7 +223,8 @@ def start_session(request):
             location = get_object_or_404(Location, pk=location_id)
             existing = AttendanceSession.objects.filter(location=location, ended_at__isnull=True).first()
             if existing:
-                messages.warning(request, f'An active session already exists for {location.name}.')
+                existing_label = existing.course.code if existing.course else 'No course'
+                messages.warning(request, f'An active session already exists for {location.name} ({existing_label}).')
             else:
                 course = Course.objects.filter(pk=course_id).first() if course_id else None
                 AttendanceSession.objects.create(
@@ -451,6 +477,11 @@ def teacher_dashboard(request):
     active_sessions = AttendanceSession.objects.filter(
         course__professor=user, ended_at__isnull=True,
     ).count()
+    # For "Students" tile: link to roster of a course that has enrollments (so list isn't empty when possible)
+    first_course_with_students = (
+        my_courses.annotate(ec=Count('enrollments')).filter(ec__gt=0).order_by('-ec').first()
+        or my_courses.first()
+    )
 
     return render(request, 'attendance/teacher_dashboard.html', {
         'courses': my_courses,
@@ -458,6 +489,7 @@ def teacher_dashboard(request):
         'total_students': total_students,
         'active_sessions': active_sessions,
         'total_courses': my_courses.count(),
+        'first_course_with_students': first_course_with_students,
     })
 
 
@@ -483,6 +515,53 @@ def teacher_class_attendance(request, course_id):
         'course': course,
         'sessions': sessions,
         'total_enrolled': total_enrolled,
+    })
+
+
+@role_required(User.Role.PROFESSOR, User.Role.ADMIN)
+def teacher_session_mark_students(request, session_id):
+    """Teacher marks students present for a session (e.g. when student has device/portal issues)."""
+    session = get_object_or_404(AttendanceSession.objects.select_related('course', 'location'), pk=session_id)
+    if not session.course_id:
+        messages.error(request, 'This session is not linked to a course. Cannot mark students by hand.')
+        return redirect('attendance:manage_sessions')
+    course = session.course
+    if request.user.role == User.Role.PROFESSOR and course.professor != request.user:
+        messages.error(request, 'You do not have access to this course.')
+        return redirect('attendance:teacher_dashboard')
+
+    enrolled = CourseEnrollment.objects.filter(course=course).select_related('student')
+    marked_ids = set(
+        AttendanceRecord.objects.filter(session=session).values_list('user_id', flat=True)
+    )
+    students_status = []
+    for e in enrolled:
+        students_status.append({
+            'student': e.student,
+            'marked': e.student_id in marked_ids,
+        })
+
+    if request.method == 'POST':
+        student_id = request.POST.get('student_id')
+        if student_id:
+            student = get_object_or_404(User, pk=student_id)
+            if not CourseEnrollment.objects.filter(course=course, student=student).exists():
+                messages.error(request, 'Student is not enrolled in this course.')
+            else:
+                record, created = AttendanceRecord.objects.get_or_create(
+                    user=student, session=session,
+                    defaults={'location': session.location, 'status': AttendanceRecord.Status.ON_TIME},
+                )
+                if created:
+                    messages.success(request, f'Marked {student.get_full_name()} present for this session.')
+                else:
+                    messages.info(request, f'{student.get_full_name()} was already marked present.')
+        return redirect('attendance:teacher_session_mark_students', session_id=session.pk)
+
+    return render(request, 'attendance/teacher_session_mark_students.html', {
+        'session': session,
+        'course': course,
+        'students_status': students_status,
     })
 
 

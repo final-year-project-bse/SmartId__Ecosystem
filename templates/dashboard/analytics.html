@@ -4,92 +4,104 @@
 {% block content %}
 <div class="page-header">
     <h1><i class="bi bi-activity"></i> Analytics Dashboard</h1>
-    <p>System-wide performance metrics for the last 7 days.</p>
+    <p>System-wide performance metrics for the last 30 days.</p>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
-                    <div class="mc-title">Total<br>Users</div>
+        <a href="{% url 'dashboard:manage_users' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon primary"><i class="bi bi-people-fill"></i></div>
+                        <div class="mc-title">Total<br>Users</div>
+                    </div>
+                    <span class="mc-badge info">All Time</span>
                 </div>
-                <span class="mc-badge info">All Time</span>
+                <div class="mc-value">{{ total_users }}</div>
+                <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
             </div>
-            <div class="mc-value">{{ total_users }}</div>
-            <div class="mc-bar"><div class="mc-bar-fill primary" style="width:100%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon success"><i class="bi bi-mortarboard-fill"></i></div>
-                    <div class="mc-title">Total<br>Students</div>
+        <a href="{% url 'dashboard:manage_users' %}?role=student" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon success"><i class="bi bi-mortarboard-fill"></i></div>
+                        <div class="mc-title">Total<br>Students</div>
+                    </div>
+                    <span class="mc-badge success">Active</span>
                 </div>
-                <span class="mc-badge success">Active</span>
+                <div class="mc-value">{{ total_students }}</div>
+                <div class="mc-bar"><div class="mc-bar-fill success" style="width:{% widthratio total_students total_users 100 %}%"></div></div>
             </div>
-            <div class="mc-value">{{ total_students }}</div>
-            <div class="mc-bar"><div class="mc-bar-fill success" style="width:{% widthratio total_students total_users 100 %}%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
-                    <div class="mc-title">Attendance<br>(7 days)</div>
+        <a href="{% url 'dashboard:reports' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
+                        <div class="mc-title">Attendance<br>(30 days)</div>
+                    </div>
+                    <span class="mc-badge info">Weekly</span>
                 </div>
-                <span class="mc-badge info">Weekly</span>
+                <div class="mc-value">{{ attendance_count }}</div>
+                <div class="mc-bar"><div class="mc-bar-fill info" style="width:75%"></div></div>
             </div>
-            <div class="mc-value">{{ attendance_count }}</div>
-            <div class="mc-bar"><div class="mc-bar-fill info" style="width:75%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon danger"><i class="bi bi-shield-exclamation"></i></div>
-                    <div class="mc-title">Failed<br>Logins</div>
+        <a href="{% url 'dashboard:analytics' %}#access-logs" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon danger"><i class="bi bi-shield-exclamation"></i></div>
+                        <div class="mc-title">Failed<br>Logins</div>
+                    </div>
+                    {% if failed_logins > 5 %}<span class="mc-badge danger">Alert</span>{% else %}<span class="mc-badge success">Normal</span>{% endif %}
                 </div>
-                {% if failed_logins > 5 %}<span class="mc-badge danger">Alert</span>{% else %}<span class="mc-badge success">Normal</span>{% endif %}
+                <div class="mc-value">{{ failed_logins }}</div>
+                <div class="mc-bar"><div class="mc-bar-fill danger" style="width:{% if failed_logins > 0 %}40{% else %}0{% endif %}%"></div></div>
             </div>
-            <div class="mc-value">{{ failed_logins }}</div>
-            <div class="mc-bar"><div class="mc-bar-fill danger" style="width:{% if failed_logins > 0 %}40{% else %}0{% endif %}%"></div></div>
-        </div>
+        </a>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-12 col-md-6">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon info"><i class="bi bi-person-workspace"></i></div>
-                    <div class="mc-title">Total Professors</div>
+        <a href="{% url 'dashboard:manage_users' %}?role=professor" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon info"><i class="bi bi-person-workspace"></i></div>
+                        <div class="mc-title">Total Professors</div>
+                    </div>
+                    <span class="mc-badge info">Staff</span>
                 </div>
-                <span class="mc-badge info">Staff</span>
+                <div class="mc-value">{{ total_professors }}</div>
+                <div class="mc-footer"><span>Faculty members</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% widthratio total_professors total_users 100 %}%"></div></div>
             </div>
-            <div class="mc-value">{{ total_professors }}</div>
-            <div class="mc-footer"><span>Faculty members</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% widthratio total_professors total_users 100 %}%"></div></div>
-        </div>
+        </a>
     </div>
     <div class="col-12 col-md-6">
-        <div class="metric-card">
-            <div class="mc-head">
-                <div class="mc-head-left">
-                    <div class="mc-icon success"><i class="bi bi-check-circle-fill"></i></div>
-                    <div class="mc-title">Successful Logins (7d)</div>
+        <a href="{% url 'dashboard:analytics' %}#access-logs" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head">
+                    <div class="mc-head-left">
+                        <div class="mc-icon success"><i class="bi bi-check-circle-fill"></i></div>
+                        <div class="mc-title">Successful Logins (7d)</div>
+                    </div>
+                    <span class="mc-badge success">Healthy</span>
                 </div>
-                <span class="mc-badge success">Healthy</span>
+                <div class="mc-value">{{ successful_logins }}</div>
+                <div class="mc-footer"><span>Last 30 days</span></div>
+                <div class="mc-bar"><div class="mc-bar-fill success" style="width:85%"></div></div>
             </div>
-            <div class="mc-value">{{ successful_logins }}</div>
-            <div class="mc-footer"><span>Last 7 days</span></div>
-            <div class="mc-bar"><div class="mc-bar-fill success" style="width:85%"></div></div>
-        </div>
+        </a>
     </div>
 </div>
 
@@ -117,7 +129,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card" id="access-logs">
     <div class="card-body">
         <div class="section-title"><i class="bi bi-journal-text"></i> Recent Access Logs</div>
         <div class="table-responsive">

@@ -36,6 +36,7 @@ urlpatterns = [
     path('teach/analytics/', views.teacher_analytics, name='teacher_analytics'),
     path('teach/leaves/', views.teacher_leave_review, name='teacher_leaves'),
     path('teach/<int:course_id>/', views.teacher_class_attendance, name='teacher_class_attendance'),
+    path('teach/session/<int:session_id>/mark-students/', views.teacher_session_mark_students, name='teacher_session_mark_students'),
     path('teach/<int:course_id>/roster/', views.teacher_student_roster, name='teacher_roster'),
     path('teach/<int:course_id>/export/', views.teacher_export, name='teacher_export'),
     path('teach/<int:course_id>/notify/', views.teacher_send_notification, name='teacher_notify'),

@@ -17,10 +17,10 @@
                 {% endif %}
                 <form method="post" action="{% url 'attendance:start_session' %}">
                     {% csrf_token %}
-                    {% if suggested_slot %}<input type="hidden" name="slot_id" value="{{ suggested_slot.id }}">{% endif %}
+                    {% if suggested_slot %}<input type="hidden" id="slot_id" name="slot_id" value="{{ suggested_slot.id }}">{% endif %}
                     <div class="mb-3">
                         <label class="form-label">Location</label>
-                        <select name="location_id" class="form-select" required>
+                        <select id="location_id" name="location_id" class="form-select" required>
                             <option value="">-- Select --</option>
                             {% for loc in locations %}
                             <option value="{{ loc.id }}" {% if suggested_slot and suggested_slot.location_id == loc.id %}selected{% endif %}>{{ loc.name }} ({{ loc.code }})</option>
@@ -29,7 +29,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Course <span style="color:var(--color-text-muted);font-weight:400">(optional)</span></label>
-                        <select name="course_id" class="form-select">
+                        <select id="course_id" name="course_id" class="form-select">
                             <option value="">-- None --</option>
                             {% for c in courses %}
                             <option value="{{ c.id }}" {% if suggested_slot and suggested_slot.course_id == c.id %}selected{% endif %}>{{ c.code }} — {{ c.name }}</option>
@@ -38,6 +38,19 @@
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-play-fill"></i> Start Session</button>
                 </form>
+                {% if suggested_slot %}
+                <script>
+                  (function () {
+                    const slot = document.getElementById('slot_id');
+                    const loc = document.getElementById('location_id');
+                    const course = document.getElementById('course_id');
+                    if (!slot || !loc || !course) return;
+                    const clearSlot = () => { slot.value = ''; };
+                    loc.addEventListener('change', clearSlot);
+                    course.addEventListener('change', clearSlot);
+                  })();
+                </script>
+                {% endif %}
             </div>
         </div>
     </div>

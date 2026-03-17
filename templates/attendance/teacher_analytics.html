@@ -7,20 +7,24 @@
     <p>Visual overview of attendance trends across your courses.</p>
 </div>
 
-{# ── Quick Stats Row ── #}
+{# ── Quick Stats Row (clickable tiles) ── #}
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head"><div class="mc-head-left"><div class="mc-icon primary"><i class="bi bi-book"></i></div><div class="mc-title">Courses</div></div></div>
-            <div class="mc-value">{{ total_courses }}</div>
-        </div>
+        <a href="{% url 'attendance:teacher_dashboard' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head"><div class="mc-head-left"><div class="mc-icon primary"><i class="bi bi-book"></i></div><div class="mc-title">Courses</div></div></div>
+                <div class="mc-value">{{ total_courses }}</div>
+            </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="metric-card">
-            <div class="mc-head"><div class="mc-head-left"><div class="mc-icon warning"><i class="bi bi-journal-x"></i></div><div class="mc-title">Pending<br>Leaves</div></div>
-            {% if pending_leaves %}<span class="mc-badge warning">{{ pending_leaves }}</span>{% endif %}</div>
-            <div class="mc-value">{{ pending_leaves }}</div>
-        </div>
+        <a href="{% url 'attendance:teacher_leaves' %}" class="metric-card-link" style="text-decoration:none;color:inherit;display:block;cursor:pointer">
+            <div class="metric-card">
+                <div class="mc-head"><div class="mc-head-left"><div class="mc-icon warning"><i class="bi bi-journal-x"></i></div><div class="mc-title">Pending<br>Leaves</div></div>
+                {% if pending_leaves %}<span class="mc-badge warning">{{ pending_leaves }}</span>{% endif %}</div>
+                <div class="mc-value">{{ pending_leaves }}</div>
+            </div>
+        </a>
     </div>
 </div>
 

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Mark students — {{ session }} - SmartID{% endblock %}
+{% block sb_teach_dash %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-person-check"></i> Mark students present</h1>
+    <p>{{ course.code }} — {{ session.location.name }} &middot; {{ session.started_at|date:"M d, Y H:i" }}{% if session.ended_at %} (ended){% endif %}</p>
+</div>
+
+<div style="margin-bottom:1.25rem">
+    <a href="{% url 'attendance:teacher_class_attendance' course.pk %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back to {{ course.code }}</a>
+</div>
+
+<div class="card">
+    <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--color-border)">
+        <p style="margin:0;color:var(--color-text-secondary);font-size:0.9rem">Use this to mark a student present when they could not use the terminal (RFID/face/fingerprint) or had device or portal issues.</p>
+    </div>
+    <div style="padding:1.25rem">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in students_status %}
+                    <tr>
+                        <td>
+                            <div style="font-weight:600;color:var(--color-text-primary)">{{ item.student.get_full_name }}</div>
+                            <div style="font-size:0.8rem;color:var(--color-text-muted)">{{ item.student.institutional_id|default:"—" }} &middot; {{ item.student.email }}</div>
+                        </td>
+                        <td>
+                            {% if item.marked %}
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-check-circle"></i> Present</span>
+                            {% else %}
+                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning)">Not marked</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not item.marked %}
+                            <form method="post" class="d-inline">{% csrf_token %}
+                                <input type="hidden" name="student_id" value="{{ item.student.pk }}">
+                                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> Mark present</button>
+                            </form>
+                            {% else %}
+                            <span style="color:var(--color-text-muted);font-size:0.85rem">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3"><div class="empty-state"><p>No students enrolled in this course.</p></div></td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

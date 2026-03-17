@@ -10,14 +10,14 @@
 <div class="shortcut-section">
     <h2 class="shortcut-heading">What do you want to do?</h2>
     <div class="row g-3 mb-4">
-        <div class="col-6 col-lg-3">
-            <a href="{% url 'attendance:attendance_page' %}" class="card shortcut-card shortcut-card-primary">
+        <div class="col-12 col-lg-6">
+            <div class="card shortcut-card" style="border-color:var(--color-info);background:var(--color-info-bg);">
                 <div class="card-body">
-                    <div class="shortcut-icon"><i class="bi bi-check2-square"></i></div>
-                    <div class="shortcut-title">Mark Attendance</div>
-                    <div class="shortcut-desc">Record your presence at a location</div>
+                    <div class="shortcut-icon" style="background:var(--color-info);color:#fff"><i class="bi bi-info-circle"></i></div>
+                    <div class="shortcut-title">How is attendance recorded?</div>
+                    <div class="shortcut-desc">Attendance is recorded at the <strong>terminal</strong> using RFID, facial recognition, or fingerprint. If you have issues with the device or portal, ask your teacher to mark you present for that class.</div>
                 </div>
-            </a>
+            </div>
         </div>
         <div class="col-6 col-lg-3">
             <a href="{% url 'attendance:student_stats' %}" class="card shortcut-card">
