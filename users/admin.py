@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, ConsentRecord, UserAuthMethod, RFIDCredential, BiometricEmbedding, ParentStudentLink, FailedLoginAttempt
+from .models import User, ConsentRecord, UserAuthMethod, RFIDCredential, BiometricEmbedding, ParentStudentLink, FailedLoginAttempt, UniversityRecord
 
 
 @admin.register(User)
@@ -49,3 +49,11 @@ class FailedLoginAttemptAdmin(admin.ModelAdmin):
     search_fields = ('identifier',)
     ordering = ('-created_at',)
     date_hierarchy = 'created_at'
+
+
+@admin.register(UniversityRecord)
+class UniversityRecordAdmin(admin.ModelAdmin):
+    list_display = ('registration_number', 'full_name', 'email', 'department', 'age', 'last_updated')
+    list_filter = ('department',)
+    search_fields = ('registration_number', 'full_name', 'email')
+    ordering = ('registration_number',)

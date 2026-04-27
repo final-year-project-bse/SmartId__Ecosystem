@@ -15,13 +15,15 @@ from api.serializers import (
     DeviceRFIDScanSerializer,
     DeviceFaceMatchSerializer,
     DeviceOfflineBatchSerializer,
+    DeviceFingerprintEnrollSerializer,
+    DeviceFingerprintScanSerializer,
     AttendanceRecordSerializer,
 )
 from users.models import User, RFIDCredential, BiometricEmbedding
 from users.models import AuthMethod
 from attendance.models import (
     AttendanceSession, AttendanceRecord, PendingRFIDScan,
-    AccessLog,
+    AccessLog, FingerprintSensorSlot,
 )
 from dashboard.models import SystemDevice
 from notifications.utils import notify, notify_admins
@@ -140,6 +142,37 @@ def _notify_face_mismatch(session, device: SystemDevice, user_expected: User = N
             msg,
             notification_type='failed_auth',
         )
+
+
+@api_view(['POST'])
+@permission_classes([IsDeviceAuthenticated])
+def device_heartbeat(request: Request):
+    """
+    Pi sends a heartbeat to update device status and last_seen timestamp.
+    POST (no body required). Call every 60 s from Pi scripts.
+    Also cleans up PendingRFIDScan entries older than 10 minutes.
+    """
+    device: SystemDevice = request.device
+    device.status = SystemDevice.Status.ONLINE
+    device.last_heartbeat = timezone.now()
+    ip = (
+        request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+        or request.META.get('REMOTE_ADDR')
+    )
+    if ip:
+        device.ip_address = ip
+    device.save(update_fields=['status', 'last_heartbeat', 'ip_address', 'updated_at'])
+
+    # Clean up stale pending RFID scans (older than 10 min)
+    cutoff = timezone.now() - timezone.timedelta(minutes=10)
+    deleted, _ = PendingRFIDScan.objects.filter(scanned_at__lt=cutoff).delete()
+
+    return Response({
+        'status': 'ok',
+        'device': device.name,
+        'stale_scans_removed': deleted,
+        'timestamp': timezone.now().isoformat(),
+    })
 
 
 @api_view(['GET'])
@@ -342,3 +375,112 @@ def device_offline_batch(request: Request):
         'processed': len(results),
         'results': results,
     }, status=status.HTTP_200_OK)
+
+
+# ===========================================================================
+# Fingerprint sensor endpoints (AS608 / R307 via UART)
+# ===========================================================================
+
+@api_view(['POST'])
+@permission_classes([IsDeviceAuthenticated])
+def device_fingerprint_enroll(request: Request):
+    """
+    Pi enrolled a user's finger into the sensor and reports the slot mapping.
+    Admin must trigger enrollment on the Pi; this stores (device, slot) → user.
+
+    POST body: { "user_id" or "institutional_id", "slot_position": 0-127 }
+    """
+    serializer = DeviceFingerprintEnrollSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    data = serializer.validated_data
+    device: SystemDevice = request.device
+
+    if data.get('user_id'):
+        user = User.objects.filter(pk=data['user_id'], is_active=True).first()
+    else:
+        user = User.objects.filter(institutional_id=data['institutional_id'], is_active=True).first()
+
+    if not user:
+        return Response({'error': 'User not found or inactive.'}, status=status.HTTP_404_NOT_FOUND)
+
+    slot_pos = data['slot_position']
+    existing = FingerprintSensorSlot.objects.filter(
+        device=device, slot_position=slot_pos
+    ).select_related('user').first()
+
+    if existing and existing.user != user:
+        return Response({
+            'error': f'Slot {slot_pos} is already mapped to {existing.user.institutional_id}. '
+                     'Delete the old enrollment first.',
+        }, status=status.HTTP_409_CONFLICT)
+
+    FingerprintSensorSlot.objects.update_or_create(
+        device=device, slot_position=slot_pos,
+        defaults={'user': user},
+    )
+    return Response({
+        'success': True,
+        'message': f'Slot {slot_pos} enrolled for {user.institutional_id} on device {device.name}.',
+        'user_id': user.pk,
+        'institutional_id': user.institutional_id,
+        'slot_position': slot_pos,
+    }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsDeviceAuthenticated])
+def device_fingerprint_scan(request: Request):
+    """
+    Pi matched a scanned finger to a sensor slot; server resolves user and marks attendance.
+
+    POST body: { "session_id": int, "slot_position": int, "confidence": int (optional), "timestamp": optional }
+    """
+    serializer = DeviceFingerprintScanSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    data = serializer.validated_data
+    device: SystemDevice = request.device
+    at_time = data.get('timestamp') or timezone.now()
+
+    session = AttendanceSession.objects.filter(
+        pk=data['session_id'], ended_at__isnull=True,
+    ).select_related('location', 'course').first()
+    if not session:
+        return Response({'error': 'Session not found or already ended.'}, status=status.HTTP_404_NOT_FOUND)
+
+    slot = FingerprintSensorSlot.objects.filter(
+        device=device, slot_position=data['slot_position'],
+    ).select_related('user').first()
+    if not slot:
+        AccessLog.objects.create(location=session.location, success=False, auth_method='fingerprint')
+        notify_admins(
+            'Unregistered Fingerprint Slot',
+            f'Device {device.name} reported slot {data["slot_position"]} which has no user mapping.',
+            notification_type='failed_auth',
+        )
+        return Response({'error': 'Fingerprint slot not enrolled on this device.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = slot.user
+    if not user.is_active:
+        return Response({'error': 'User account is inactive.'}, status=status.HTTP_403_FORBIDDEN)
+
+    status_val = AttendanceRecord.Status.ON_TIME if _is_on_time(at_time, session) else AttendanceRecord.Status.LATE
+    with transaction.atomic():
+        record, created = AttendanceRecord.objects.get_or_create(
+            user=user, session=session,
+            defaults={'location': session.location, 'marked_at': at_time, 'status': status_val},
+        )
+        AccessLog.objects.create(
+            user=user, location=session.location, success=True, auth_method='fingerprint',
+        )
+
+    return Response({
+        'success': True,
+        'message': f'Attendance {"marked" if created else "already recorded"} for {user.institutional_id}.',
+        'user_id': user.pk,
+        'institutional_id': user.institutional_id,
+        'status': record.status,
+        'already_recorded': not created,
+        'record': AttendanceRecordSerializer(record).data,
+    }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

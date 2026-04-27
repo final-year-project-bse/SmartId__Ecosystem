@@ -8,8 +8,8 @@ _env = os.environ.get
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = _env('SECRET_KEY', 'django-insecure-dev-key-change-in-production')
-DEBUG = _env('DEBUG', 'True').lower() in ('1', 'true', 'yes')
-ALLOWED_HOSTS = _env('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+DEBUG = _env('DEBUG', 'True').lower() not in ('0', 'false', 'no')
+ALLOWED_HOSTS = _env('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -111,9 +111,12 @@ TIME_ZONE = 'Asia/Karachi'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static'] if (BASE_DIR / 'static').exists() else []
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -125,8 +128,15 @@ try:
 except ImportError:
     pass
 
-# Session timeout 10 min (SEC-4)
-SESSION_COOKIE_AGE = 600
+# Session timeout — read from SystemSetting at startup; fallback 10 min (SEC-4)
+def _session_timeout():
+    try:
+        from dashboard.models import SystemSetting
+        return SystemSetting.load().session_timeout_minutes * 60
+    except Exception:
+        return 600
+
+SESSION_COOKIE_AGE = _session_timeout()
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 

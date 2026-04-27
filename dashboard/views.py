@@ -5,21 +5,39 @@ Admin Dashboard, Reporting, Analytics, and Full User CRUD
 import csv
 import json
 import time
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db.models import Count, Q, Prefetch
-from django.http import HttpResponse, JsonResponse
-from django.utils import timezone
-from django.core.paginator import Paginator
 from datetime import timedelta, datetime, time as dt_time
 
-from users.models import User, ConsentRecord, UserAuthMethod, AuthMethod, RFIDCredential, FailedLoginAttempt
-from users.decorators import admin_required, staff_required
-from users.forms import AdminUserCreateForm, AdminUserEditForm, RFIDEnrollForm
-from attendance.models import AttendanceRecord, AttendanceSession, Location, AccessLog, Course, CourseEnrollment, TimetableSlot
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+
+from attendance.models import (
+    AttendanceRecord, AttendanceSession, Location, AccessLog,
+    Course, CourseEnrollment, TimetableSlot, FingerprintSensorSlot, Department,
+)
 from notifications.utils import notify, notify_admins
+from users.decorators import admin_required, staff_required
+from users.forms import (
+    AdminUserCreateForm, AdminUserEditForm, RFIDEnrollForm,
+    StudentEnrollForm, TeacherEnrollForm, ParentEnrollForm, AdminEnrollForm,
+)
+from users.models import (
+    User, ConsentRecord, UserAuthMethod, AuthMethod,
+    RFIDCredential, FailedLoginAttempt, UniversityRecord,
+)
 from .models import SystemDevice, SystemSetting, AlertRule
+
+
+def _csv_safe(value):
+    """Prevent CSV injection: prefix formula-starting values with a single quote."""
+    s = str(value) if value is not None else ''
+    return ("'" + s) if s and s[0] in ('=', '+', '-', '@', '\t', '\r') else s
 
 
 # ---------------------------------------------------------------------------
@@ -142,8 +160,8 @@ def reports(request):
         writer.writerow(['Institutional ID', 'First Name', 'Last Name', 'Location', 'Location Code', 'Date/Time', 'Status'])
         for r in records[:5000]:
             writer.writerow([
-                r.user.institutional_id, r.user.first_name, r.user.last_name,
-                r.location.name, r.location.code,
+                _csv_safe(r.user.institutional_id), _csv_safe(r.user.first_name), _csv_safe(r.user.last_name),
+                _csv_safe(r.location.name), _csv_safe(r.location.code),
                 r.marked_at.strftime('%Y-%m-%d %H:%M:%S'),
                 r.get_status_display(),
             ])
@@ -264,55 +282,194 @@ def manage_users(request):
     })
 
 
+def _save_face_embedding(user, face_b64: str) -> bool:
+    """
+    Decode base64 JPEG, extract 128-D face embedding with face_recognition,
+    encrypt it, and store in BiometricEmbedding. Returns True on success.
+    """
+    import base64, struct, io
+    from users.models import BiometricEmbedding, AuthMethod as AM
+    try:
+        import face_recognition
+        from PIL import Image
+        import numpy as np
+    except ImportError:
+        return False
+    try:
+        # Strip data-URL prefix if present
+        if ',' in face_b64:
+            face_b64 = face_b64.split(',', 1)[1]
+        img_bytes = base64.b64decode(face_b64)
+        img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
+        img_array = np.array(img)
+        locations = face_recognition.face_locations(img_array)
+        if not locations:
+            return False
+        encodings = face_recognition.face_encodings(img_array, locations)
+        if not encodings:
+            return False
+        # Pack 128 floats as bytes, then encrypt
+        raw_bytes = struct.pack(f'{len(encodings[0])}f', *encodings[0])
+        emb, _ = BiometricEmbedding.objects.get_or_create(user=user, defaults={'method': AM.FACE})
+        emb.method = AM.FACE
+        emb.set_embedding(raw_bytes)
+        return True
+    except Exception:
+        return False
+
+
+def _assign_auth_methods(user):
+    """
+    Auto-assign primary + secondary attendance methods based on role and gender.
+    Returns (primary, secondary) tuple of AuthMethod values.
+    """
+    r, g = user.role, user.gender
+    if r == User.Role.STUDENT:
+        primary = AuthMethod.RFID
+        secondary = AuthMethod.FACE if g == User.Gender.MALE else AuthMethod.FINGERPRINT
+    elif r == User.Role.PROFESSOR:
+        primary = AuthMethod.FACE if g == User.Gender.MALE else AuthMethod.RFID
+        secondary = ''
+    elif r == User.Role.ADMIN:
+        primary = AuthMethod.FINGERPRINT
+        secondary = ''
+    else:  # parent
+        primary = ''
+        secondary = ''
+    return primary, secondary
+
+
 @admin_required
 def create_user(request):
     """
-    Admin enrolls a new user (UC-1, UC-6, FR-1, FR-2).
-    Creates the user, consent record, auth method, and optionally
-    redirects to RFID enrollment if RFID is the chosen method.
+    Role-based enrollment. Role is selected first; each role has its own
+    form with fields and biometric requirements derived from role + gender.
     """
-    if request.method == 'POST':
-        form = AdminUserCreateForm(request.POST)
+    role = request.POST.get('role', '') or request.GET.get('role', '')
+    departments = Department.objects.filter(is_active=True).order_by('name')
+
+    ROLE_FORMS = {
+        'student': StudentEnrollForm,
+        'professor': TeacherEnrollForm,
+        'parent': ParentEnrollForm,
+        'admin': AdminEnrollForm,
+    }
+
+    if request.method == 'POST' and role in ROLE_FORMS:
+        FormClass = ROLE_FORMS[role]
+        form = FormClass(request.POST)
         if form.is_valid():
             user = form.save()
-            # ── Create Digital Consent Record (FR-2) ──
+
+            # ── Consent record ──
             ConsentRecord.objects.create(
                 user=user,
                 biometric_consent=form.cleaned_data.get('consent_biometric', False),
                 rfid_consent=form.cleaned_data.get('consent_rfid', False),
-                data_retention_ack=form.cleaned_data.get('data_retention', False),
+                data_retention_ack=form.cleaned_data.get('data_retention', True),
                 ip_address=_get_client_ip(request),
             )
-            # ── Set authentication method ──
-            method = form.cleaned_data['auth_method']
-            UserAuthMethod.objects.create(user=user, method=method)
+
+            # ── Auto-assign attendance auth methods ──
+            primary, secondary = _assign_auth_methods(user)
+            if primary:
+                UserAuthMethod.objects.create(user=user, method=primary, secondary_method=secondary)
+
+            # ── RFID card registration ──
+            rfid_tag = request.POST.get('rfid_tag', '').strip()
+            if rfid_tag and primary == AuthMethod.RFID:
+                cred, _ = RFIDCredential.objects.get_or_create(user=user)
+                cred.set_tag(rfid_tag)
+
+            # ── Face embedding (male students and male teachers) ──
+            face_b64 = request.POST.get('face_capture', '').strip()
+            if face_b64 and secondary == AuthMethod.FACE:
+                ok = _save_face_embedding(user, face_b64)
+                if not ok:
+                    messages.warning(request, 'Face photo was submitted but no face could be detected. Re-enroll face later.')
+
+            # ── Parent → auto-link to student ──
+            if user.role == User.Role.PARENT:
+                from users.models import ParentStudentLink
+                reg = form.cleaned_data.get('student_reg_number', '')
+                student = User.objects.filter(institutional_id=reg, role=User.Role.STUDENT).first()
+                if student:
+                    ParentStudentLink.objects.get_or_create(parent=user, student=student)
+
             notify_admins(
                 'New User Enrolled',
-                f'User {user.get_full_name()} ({user.institutional_id}) was enrolled by '
-                f'{request.user.get_full_name()} with {dict(AuthMethod.choices).get(method, method)} auth.',
+                f'{user.get_role_display()} {user.get_full_name()} ({user.institutional_id}) enrolled by '
+                f'{request.user.get_full_name()}.',
                 notification_type='system',
             )
-            # ── RFID: register tag if provided in wizard, else redirect to enroll page ──
-            if method == AuthMethod.RFID:
-                rfid_tag = form.cleaned_data.get('rfid_tag', '').strip()
-                if rfid_tag:
-                    from users.models import RFIDCredential
-                    cred, _ = RFIDCredential.objects.get_or_create(user=user)
-                    cred.set_tag(rfid_tag)
-                    messages.success(request, f'User {user.get_full_name()} enrolled with RFID card registered.')
-                else:
-                    messages.success(request, f'User {user.get_full_name()} created. Register their RFID card from User Management.')
-                    return redirect('dashboard:enroll_rfid', user_id=user.pk)
+
+            # ── Fingerprint: redirect to Pi enrollment note for female students / admins ──
+            needs_pi_fingerprint = (
+                (user.role == User.Role.STUDENT and user.gender == User.Gender.FEMALE)
+                or user.role == User.Role.ADMIN
+            )
+            if needs_pi_fingerprint:
+                messages.success(request, f'{user.get_full_name()} enrolled. Run fingerprint_enroll.py on the Pi to register their fingerprint.')
             else:
-                messages.success(request, f'User {user.get_full_name()} enrolled successfully.')
+                messages.success(request, f'{user.get_full_name()} enrolled successfully.')
+
             return redirect('dashboard:manage_users')
+        # Form invalid — fall through to render with errors
     else:
-        form = AdminUserCreateForm()
-    return render(request, 'dashboard/user_form.html', {
+        form = ROLE_FORMS.get(role, StudentEnrollForm)() if role else None
+
+    return render(request, 'dashboard/enroll_user.html', {
         'form': form,
-        'form_title': 'Enroll New User',
-        'submit_label': 'Enroll User',
+        'role': role,
+        'departments': departments,
     })
+
+
+@admin_required
+def fetch_university_record(request):
+    """AJAX: look up a registration number in the UniversityRecord placeholder table."""
+    reg = request.GET.get('reg', '').strip().upper()
+    if not reg:
+        return JsonResponse({'found': False})
+    record = UniversityRecord.objects.select_related('department').filter(registration_number=reg).first()
+    if record:
+        return JsonResponse({
+            'found': True,
+            'full_name': record.full_name,
+            'email': record.email,
+            'phone': record.phone,
+            'age': record.age,
+            'department_id': record.department_id,
+            'department_name': record.department.name if record.department else '',
+        })
+    return JsonResponse({'found': False, 'message': 'No record found in university database for this registration number.'})
+
+
+@admin_required
+def manage_departments(request):
+    """Admin lists, creates, and toggles departments."""
+    departments = Department.objects.all().order_by('name')
+    if request.method == 'POST':
+        action = request.POST.get('action', 'create')
+        if action == 'create':
+            name = request.POST.get('name', '').strip()
+            code = request.POST.get('code', '').strip().upper()
+            if not name or not code:
+                messages.error(request, 'Name and code are required.')
+            elif Department.objects.filter(code=code).exists():
+                messages.error(request, f'Department code "{code}" already exists.')
+            else:
+                Department.objects.create(name=name, code=code)
+                messages.success(request, f'Department "{name}" added.')
+                return redirect('dashboard:manage_departments')
+        elif action == 'toggle':
+            dept_id = request.POST.get('dept_id')
+            dept = get_object_or_404(Department, pk=dept_id)
+            dept.is_active = not dept.is_active
+            dept.save(update_fields=['is_active'])
+            messages.success(request, f'Department "{dept.name}" {"activated" if dept.is_active else "deactivated"}.')
+            return redirect('dashboard:manage_departments')
+    return render(request, 'dashboard/manage_departments.html', {'departments': departments})
 
 
 def _get_client_ip(request):
@@ -386,12 +543,15 @@ def toggle_user_active(request, user_id):
 
 @admin_required
 def reset_user_password(request, user_id):
-    """Admin resets a user password."""
+    """Admin resets a user password (validated with Django's password validators)."""
     target = get_object_or_404(User, pk=user_id)
     if request.method == 'POST':
         new_pw = request.POST.get('new_password', '').strip()
-        if len(new_pw) < 8:
-            messages.error(request, 'Password must be at least 8 characters.')
+        try:
+            validate_password(new_pw, user=target)
+        except ValidationError as e:
+            for err in e.messages:
+                messages.error(request, err)
             return render(request, 'dashboard/reset_password.html', {'target_user': target})
         target.set_password(new_pw)
         target.save(update_fields=['password'])
@@ -401,6 +561,30 @@ def reset_user_password(request, user_id):
         messages.success(request, f'Password reset for {target.get_full_name()}.')
         return redirect('dashboard:manage_users')
     return render(request, 'dashboard/reset_password.html', {'target_user': target})
+
+
+@admin_required
+def delete_user(request, user_id):
+    """Admin permanently deletes a user account (POST only, with confirmation)."""
+    if request.method != 'POST':
+        return redirect('dashboard:manage_users')
+    target = get_object_or_404(User, pk=user_id)
+    if target == request.user:
+        messages.error(request, 'You cannot delete your own account.')
+        return redirect('dashboard:manage_users')
+    if target.is_superuser:
+        messages.error(request, 'Superuser accounts cannot be deleted from here.')
+        return redirect('dashboard:manage_users')
+    name = target.get_full_name()
+    inst_id = target.institutional_id
+    target.delete()
+    notify_admins(
+        'User Account Deleted',
+        f'{name} ({inst_id}) was permanently deleted by {request.user.get_full_name()}.',
+        notification_type='system',
+    )
+    messages.success(request, f'User {name} has been permanently deleted.')
+    return redirect('dashboard:manage_users')
 
 
 # ---------------------------------------------------------------------------
@@ -428,6 +612,89 @@ def manage_locations(request):
         'locations': locations,
         'location_types': Location._meta.get_field('location_type').choices,
     })
+
+
+@admin_required
+def edit_location(request, location_id):
+    """Admin edits an existing location."""
+    location = get_object_or_404(Location, pk=location_id)
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        code = request.POST.get('code', '').strip()
+        loc_type = request.POST.get('location_type', 'classroom')
+        if not name or not code:
+            messages.error(request, 'Name and code are required.')
+        else:
+            conflict = Location.objects.filter(code=code).exclude(pk=location_id).first()
+            if conflict:
+                messages.error(request, f'Code "{code}" is already used by {conflict.name}.')
+            else:
+                location.name = name
+                location.code = code
+                location.location_type = loc_type
+                location.save()
+                messages.success(request, f'Location "{name}" updated.')
+                return redirect('dashboard:manage_locations')
+    return render(request, 'dashboard/edit_location.html', {
+        'location': location,
+        'location_types': Location._meta.get_field('location_type').choices,
+    })
+
+
+@admin_required
+def delete_location(request, location_id):
+    """Admin deletes a location (POST only)."""
+    if request.method != 'POST':
+        return redirect('dashboard:manage_locations')
+    location = get_object_or_404(Location, pk=location_id)
+    if AttendanceSession.objects.filter(location=location).exists():
+        messages.error(request, f'Cannot delete "{location.name}" — it has attendance sessions linked to it.')
+        return redirect('dashboard:manage_locations')
+    name = location.name
+    location.delete()
+    messages.success(request, f'Location "{name}" deleted.')
+    return redirect('dashboard:manage_locations')
+
+
+@admin_required
+def delete_device(request, device_id):
+    """Admin removes a registered IoT device (POST only)."""
+    if request.method != 'POST':
+        return redirect('dashboard:system_health')
+    device = get_object_or_404(SystemDevice, pk=device_id)
+    name = device.name
+    device.delete()
+    messages.success(request, f'Device "{name}" removed.')
+    return redirect('dashboard:system_health')
+
+
+@admin_required
+def fingerprint_slots(request):
+    """Admin views and manages fingerprint sensor slot enrollments."""
+    slots = FingerprintSensorSlot.objects.select_related('user', 'device').order_by('device', 'slot_position')
+    devices = SystemDevice.objects.all().order_by('name')
+    device_filter = request.GET.get('device')
+    if device_filter:
+        slots = slots.filter(device_id=device_filter)
+    return render(request, 'dashboard/fingerprint_slots.html', {
+        'slots': slots,
+        'devices': devices,
+        'device_filter': device_filter,
+    })
+
+
+@admin_required
+def delete_fingerprint_slot(request, slot_id):
+    """Admin removes a fingerprint sensor slot enrollment (POST only)."""
+    if request.method != 'POST':
+        return redirect('dashboard:fingerprint_slots')
+    slot = get_object_or_404(FingerprintSensorSlot, pk=slot_id)
+    user_name = slot.user.get_full_name()
+    slot_pos = slot.slot_position
+    device_name = slot.device.name
+    slot.delete()
+    messages.success(request, f'Slot {slot_pos} for {user_name} on {device_name} removed. Re-enroll on the Pi if needed.')
+    return redirect('dashboard:fingerprint_slots')
 
 
 @admin_required

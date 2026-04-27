@@ -6,6 +6,20 @@ from django.db import models
 from django.conf import settings
 
 
+class Department(models.Model):
+    """Academic department. Predefined list; admins can add more via dashboard."""
+    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=20, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
 class Location(models.Model):
     """Classroom, lab, library, gate."""
     name = models.CharField(max_length=100)
@@ -266,6 +280,39 @@ class PendingRFIDScan(models.Model):
 
     def __str__(self):
         return f"{self.user.institutional_id} @ session {self.session_id} (device {self.device_id})"
+
+
+# ---------------------------------------------------------------------------
+# Fingerprint sensor slot mapping (AS608 / R307 sensors)
+# ---------------------------------------------------------------------------
+
+class FingerprintSensorSlot(models.Model):
+    """
+    Maps a fingerprint sensor's internal slot position to a user.
+    Sensors like AS608 store templates in flash (slots 0-127); this table
+    tracks which slot belongs to which user on which device.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='fingerprint_slots',
+    )
+    device = models.ForeignKey(
+        'dashboard.SystemDevice', on_delete=models.CASCADE,
+        related_name='fingerprint_slots',
+    )
+    slot_position = models.PositiveSmallIntegerField(
+        help_text='Slot ID in fingerprint sensor flash memory (0-127)',
+    )
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [['device', 'slot_position']]
+        indexes = [models.Index(fields=['device', 'slot_position'])]
+        verbose_name = 'Fingerprint sensor slot'
+        verbose_name_plural = 'Fingerprint sensor slots'
+
+    def __str__(self):
+        return f"Slot {self.slot_position} on {self.device.name} → {self.user.institutional_id}"
 
 
 # ---------------------------------------------------------------------------

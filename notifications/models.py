@@ -14,6 +14,7 @@ class Notification(models.Model):
     message = models.TextField()
     notification_type = models.CharField(max_length=50, choices=[
         ('missed_class', 'Missed class'),
+        ('leave_request', 'Leave request'),
         ('failed_auth', 'Failed authentication'),
         ('access_alert', 'Access alert'),
         ('system', 'System'),

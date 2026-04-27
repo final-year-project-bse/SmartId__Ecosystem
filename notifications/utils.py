@@ -42,6 +42,27 @@ def notify(user, title, message, notification_type='system'):
     return n
 
 
+def notify_parents(student, title, message, notification_type='system'):
+    """Notify all parents linked to a student (in-app + optional email)."""
+    from users.models import ParentStudentLink
+    links = ParentStudentLink.objects.filter(student=student).select_related('parent')
+    notifications = []
+    parent_emails = []
+    for link in links:
+        parent = link.parent
+        notifications.append(Notification(
+            user=parent,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+        ))
+        if getattr(parent, 'email', None):
+            parent_emails.append(parent.email)
+    Notification.objects.bulk_create(notifications)
+    _send_notification_email(parent_emails, title, message)
+    return notifications
+
+
 def notify_admins(title, message, notification_type='system'):
     """Send a notification to all active admin users (FR-10); optionally email them."""
     from users.models import User

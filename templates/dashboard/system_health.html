@@ -165,6 +165,7 @@
                         <th>API Key</th>
                         <th>Status</th>
                         <th>Last Heartbeat</th>
+                        <th class="text-end" style="padding-right:1.25rem">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -200,6 +201,12 @@
                         </td>
                         <td style="color:var(--color-text-muted);font-size:.85rem">
                             {% if d.last_heartbeat %}{{ d.last_heartbeat|timesince }} ago{% else %}Never{% endif %}
+                        </td>
+                        <td class="text-end" style="padding-right:1.25rem">
+                            <form method="post" action="{% url 'dashboard:delete_device' d.pk %}" class="d-inline" onsubmit="return confirm('Delete device {{ d.name }}? This cannot be undone.')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-ghost btn-sm" title="Delete Device" style="color:var(--color-danger)"><i class="bi bi-trash"></i></button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}

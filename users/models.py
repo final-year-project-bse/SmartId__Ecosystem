@@ -49,11 +49,22 @@ class User(AbstractUser):
         ADMIN = 'admin', 'Administrator'
         PARENT = 'parent', 'Parent'
 
+    class Gender(models.TextChoices):
+        MALE = 'male', 'Male'
+        FEMALE = 'female', 'Female'
+
     username = None
     email = models.EmailField(unique=True)
     institutional_id = models.CharField(max_length=50, unique=True)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
+    gender = models.CharField(max_length=10, choices=Gender.choices, blank=True)
+    age = models.PositiveSmallIntegerField(null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    parent_contact = models.CharField(max_length=20, blank=True, help_text="Parent/guardian phone number (students only)")
+    department = models.ForeignKey(
+        'attendance.Department', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='members',
+    )
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
 
     USERNAME_FIELD = 'email'
@@ -106,16 +117,25 @@ class AuthMethod(models.TextChoices):
 
 
 class UserAuthMethod(models.Model):
-    """Preferred authentication method per user (FR-1, FR-3)."""
+    """
+    Attendance authentication method(s) per user.
+    primary_method identifies the user (e.g. RFID card scan).
+    secondary_method authenticates/confirms identity (e.g. face or fingerprint).
+    For single-factor roles secondary_method is blank.
+    """
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='auth_method_preference')
-    method = models.CharField(max_length=20, choices=AuthMethod.choices, default=AuthMethod.RFID)
+    method = models.CharField(max_length=20, choices=AuthMethod.choices, default=AuthMethod.RFID,
+                              help_text='Primary method — identifies the user')
+    secondary_method = models.CharField(max_length=20, choices=AuthMethod.choices, blank=True,
+                                        help_text='Secondary method — confirms identity (blank = single-factor)')
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name_plural = 'User auth methods'
 
     def __str__(self):
-        return f"{self.user.institutional_id} -> {self.get_method_display()}"
+        sec = f' + {self.secondary_method}' if self.secondary_method else ''
+        return f"{self.user.institutional_id} -> {self.method}{sec}"
 
 
 class RFIDCredential(models.Model):
@@ -174,3 +194,28 @@ class ParentStudentLink(models.Model):
 
     def __str__(self):
         return f"{self.parent.get_full_name()} \u2192 {self.student.get_full_name()}"
+
+
+class UniversityRecord(models.Model):
+    """
+    Placeholder for university student database integration.
+    Admin pre-populates these rows; a real API lookup replaces this later.
+    Queried by registration number during student enrollment to auto-fill fields.
+    """
+    registration_number = models.CharField(max_length=50, unique=True)
+    full_name = models.CharField(max_length=150)
+    email = models.EmailField(blank=True)
+    department = models.ForeignKey(
+        'attendance.Department', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='university_records',
+    )
+    age = models.PositiveSmallIntegerField(null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    notes = models.TextField(blank=True, help_text='Additional info from university registry')
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['registration_number']
+
+    def __str__(self):
+        return f"{self.registration_number} \u2014 {self.full_name}"

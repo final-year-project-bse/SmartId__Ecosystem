@@ -15,7 +15,7 @@ from datetime import timedelta, time as dt_time
 
 from users.models import User
 from users.decorators import staff_required, role_required
-from notifications.utils import notify, notify_admins
+from notifications.utils import notify, notify_admins, notify_parents
 from .models import (
     Location, AttendanceSession, AttendanceRecord, AccessLog,
     Course, CourseEnrollment, LeaveRequest, TimetableSlot,
@@ -237,11 +237,40 @@ def start_session(request):
 
 @staff_required
 def end_session(request, session_id):
-    """End an active attendance session."""
+    """End an active attendance session and notify parents of absent students."""
     if request.method == 'POST':
         session = get_object_or_404(AttendanceSession, pk=session_id, ended_at__isnull=True)
         session.ended_at = timezone.now()
         session.save(update_fields=['ended_at'])
+
+        # Find enrolled students who did not attend this session
+        if session.course:
+            attended_ids = set(
+                AttendanceRecord.objects.filter(session=session).values_list('user_id', flat=True)
+            )
+            enrolled_students = CourseEnrollment.objects.filter(
+                course=session.course
+            ).select_related('student')
+            course_name = session.course.name or session.course.code
+            date_str = session.started_at.strftime('%d %b %Y')
+            for enrollment in enrolled_students:
+                student = enrollment.student
+                if student.pk not in attended_ids:
+                    # Notify the student
+                    notify(
+                        student,
+                        'Missed Class',
+                        f'You were marked absent from {course_name} on {date_str} at {session.location.name}.',
+                        notification_type='missed_class',
+                    )
+                    # Notify parents
+                    notify_parents(
+                        student,
+                        'Child Missed Class',
+                        f'{student.get_full_name()} was absent from {course_name} on {date_str} at {session.location.name}.',
+                        notification_type='missed_class',
+                    )
+
         messages.success(request, f'Session at {session.location.name} ended.')
     return redirect('attendance:manage_sessions')
 
@@ -445,7 +474,13 @@ def student_leave_request(request):
                 course.professor,
                 'Leave Request',
                 f'{request.user.get_full_name()} ({request.user.institutional_id}) has requested leave from {course.code} on {date}.',
-                notification_type='system',
+                notification_type='leave_request',
+            )
+            notify_parents(
+                request.user,
+                'Leave Request Submitted',
+                f'{request.user.get_full_name()} has submitted a leave request for {course.code} on {date}. Reason: {reason}',
+                notification_type='leave_request',
             )
             messages.success(request, 'Leave request submitted successfully.')
             return redirect('attendance:student_leaves')
@@ -620,13 +655,17 @@ def teacher_export(request, course_id):
     response['Content-Disposition'] = f'attachment; filename="{course.code}_attendance.csv"'
     writer = csv.writer(response)
     writer.writerow(['Student ID', 'Name', 'Email', 'Date/Time', 'Location', 'Session', 'Status'])
+    def _csv_safe(v):
+        s = str(v) if v is not None else ''
+        return ("'" + s) if s and s[0] in ('=', '+', '-', '@', '\t', '\r') else s
+
     for r in records[:5000]:
         writer.writerow([
-            r.user.institutional_id,
-            r.user.get_full_name(),
-            r.user.email,
+            _csv_safe(r.user.institutional_id),
+            _csv_safe(r.user.get_full_name()),
+            _csv_safe(r.user.email),
             r.marked_at.strftime('%Y-%m-%d %H:%M:%S'),
-            r.location.name,
+            _csv_safe(r.location.name),
             r.session.started_at.strftime('%Y-%m-%d %H:%M') if r.session.started_at else '',
             r.get_status_display(),
         ])
@@ -746,7 +785,13 @@ def teacher_leave_review(request):
                 leave.student,
                 f'Leave Request {action.title()}',
                 f'Your leave request for {leave.course.code} on {leave.date} has been {action}.',
-                notification_type='system',
+                notification_type='leave_request',
+            )
+            notify_parents(
+                leave.student,
+                f"Child's Leave Request {action.title()}",
+                f"{leave.student.get_full_name()}'s leave request for {leave.course.code} on {leave.date} has been {action} by the teacher.",
+                notification_type='leave_request',
             )
             messages.success(request, f'Leave request {action}.')
             return redirect('attendance:teacher_leaves')

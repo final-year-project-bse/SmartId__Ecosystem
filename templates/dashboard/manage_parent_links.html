@@ -61,7 +61,7 @@
                                         {% csrf_token %}
                                         <input type="hidden" name="action" value="unlink">
                                         <input type="hidden" name="student_id" value="{{ link.student.pk }}">
-                                        <button class="btn btn-danger btn-sm"><i class="bi bi-x-lg"></i> Unlink</button>
+                                        <button class="btn btn-ghost btn-sm" style="color:var(--color-danger)"><i class="bi bi-x-lg"></i> Unlink</button>
                                     </form>
                                 </td>
                             </tr>

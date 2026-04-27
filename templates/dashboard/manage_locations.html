@@ -40,16 +40,25 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table mb-0">
-                        <thead><tr><th>Name</th><th>Code</th><th>Type</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Code</th><th>Type</th><th class="text-end" style="padding-right:1.25rem">Actions</th></tr></thead>
                         <tbody>
                             {% for loc in locations %}
                             <tr>
                                 <td><strong>{{ loc.name }}</strong></td>
                                 <td><code style="font-size:0.8rem">{{ loc.code }}</code></td>
                                 <td><span class="role-badge professor" style="text-transform:capitalize">{{ loc.get_location_type_display }}</span></td>
+                                <td class="text-end" style="padding-right:1.25rem">
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <a href="{% url 'dashboard:edit_location' loc.pk %}" class="btn btn-ghost btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                                        <form method="post" action="{% url 'dashboard:delete_location' loc.pk %}" class="d-inline" onsubmit="return confirm('Delete location {{ loc.name }}? This cannot be undone.')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-ghost btn-sm" title="Delete" style="color:var(--color-danger)"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="3"><div class="empty-state"><div class="empty-icon"><i class="bi bi-geo-alt"></i></div><p>No locations yet. Add one to get started.</p></div></td></tr>
+                            <tr><td colspan="4"><div class="empty-state"><div class="empty-icon"><i class="bi bi-geo-alt"></i></div><p>No locations yet. Add one to get started.</p></div></td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

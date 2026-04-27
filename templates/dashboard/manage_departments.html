@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Departments - SmartID{% endblock %}
+{% block sb_departments %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-diagram-3"></i> Manage Departments</h1>
+    <p>Add and manage academic departments. Departments are used when enrolling students and faculty.</p>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3 g-lg-4">
+    <div class="col-12 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title"><i class="bi bi-plus-circle"></i> Add Department</div>
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="field-wrap">
+                        <label>Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Computer Science" required>
+                    </div>
+                    <div class="field-wrap">
+                        <label>Code</label>
+                        <input type="text" name="code" class="form-control" placeholder="e.g. CS" required maxlength="20" style="text-transform:uppercase">
+                        <small class="text-muted">Short identifier used in reports. Will be uppercased automatically.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-plus-lg"></i> Add Department</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-8">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>Members</th>
+                                <th>Status</th>
+                                <th class="text-end" style="padding-right:1.25rem">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dept in departments %}
+                            <tr>
+                                <td><strong>{{ dept.name }}</strong></td>
+                                <td><code style="font-size:0.8rem">{{ dept.code }}</code></td>
+                                <td>
+                                    <span class="text-muted" style="font-size:0.85rem">
+                                        {{ dept.members.count }} user{{ dept.members.count|pluralize }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if dept.is_active %}
+                                        <span class="role-badge student">Active</span>
+                                    {% else %}
+                                        <span class="role-badge" style="background:var(--color-muted,#6c757d);color:#fff">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end" style="padding-right:1.25rem">
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="toggle">
+                                        <input type="hidden" name="dept_id" value="{{ dept.pk }}">
+                                        <button type="submit" class="btn btn-ghost btn-sm" title="{% if dept.is_active %}Deactivate{% else %}Activate{% endif %}"
+                                            style="color:{% if dept.is_active %}var(--color-warning){% else %}var(--color-success){% endif %}">
+                                            <i class="bi bi-{% if dept.is_active %}pause-circle{% else %}play-circle{% endif %}"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <div class="empty-icon"><i class="bi bi-diagram-3"></i></div>
+                                        <p>No departments yet. Add one to get started.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

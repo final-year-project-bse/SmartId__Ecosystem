@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <h1><i class="bi bi-bell-slash"></i> Automated Alert Rules</h1>
-    <p>Configure attendance-threshold alerts. Notifications are sent to all admins when conditions are met (FR-9, FR-10).</p>
+    <p>Configure attendance-threshold alerts. Notifications are sent to all admins when conditions are met.</p>
 </div>
 
 {# ── Create Rule Form ── #}
@@ -21,7 +21,7 @@
             </div>
             <div class="col-12 col-md-2">
                 <label class="form-label" style="font-weight:600;color:var(--color-text-primary)">Location</label>
-                <select name="location_id" class="form-control" id="alertLocation">
+                <select name="location_id" class="form-select" id="alertLocation">
                     <option value="">Any / optional</option>
                     {% for loc in locations %}
                     <option value="{{ loc.pk }}">{{ loc.name }} ({{ loc.code }})</option>
@@ -29,8 +29,8 @@
                 </select>
             </div>
             <div class="col-12 col-md-2">
-                <label class="form-label" style="font-weight:600;color:var(--color-text-primary)">Course (class)</label>
-                <select name="course_id" class="form-control" id="alertCourse">
+                <label class="form-label" style="font-weight:600;color:var(--color-text-primary)">Course</label>
+                <select name="course_id" class="form-select" id="alertCourse">
                     <option value="">Any / optional</option>
                     {% for c in courses %}
                     <option value="{{ c.pk }}">{{ c.code }}</option>
@@ -44,21 +44,21 @@
             </div>
             <div class="col-6 col-md-2">
                 <label class="form-label" style="font-weight:600;color:var(--color-text-primary)">Time Window</label>
-                <select name="time_window" class="form-control">
+                <select name="time_window" class="form-select">
                     {% for val, label in window_choices %}
                     <option value="{{ val }}">{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-12 col-md-2">
-                <button type="submit" class="btn btn-primary" style="width:100%"><i class="bi bi-plus-lg"></i> Create</button>
+            <div class="col-12 col-md-1">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> Create</button>
             </div>
         </div>
     </form>
 </div>
 
 {# ── Manual Check Button ── #}
-<div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+<div class="d-flex justify-content-end mb-3">
     <form method="post" action="{% url 'dashboard:check_alert_rules' %}">
         {% csrf_token %}
         <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> Check All Rules Now</button>
@@ -70,10 +70,10 @@
     <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--color-border)">
         <h5 style="margin:0;color:var(--color-text-primary)"><i class="bi bi-list-check" style="color:var(--color-primary);margin-right:.5rem"></i>Active Rules</h5>
     </div>
-    <div style="padding:0 1.5rem 1.5rem">
+    <div class="card-body p-0">
         {% if rules %}
         <div class="table-responsive">
-            <table class="table">
+            <table class="table mb-0">
                 <thead>
                     <tr>
                         <th>Rule</th>
@@ -84,7 +84,7 @@
                         <th>Status</th>
                         <th>Last Triggered</th>
                         <th>Created By</th>
-                        <th style="text-align:right">Actions</th>
+                        <th class="text-end" style="padding-right:1.25rem">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,8 +94,7 @@
                         <td>
                             {% if r.location %}
                             <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.85rem;color:var(--color-text-secondary)">
-                                <i class="bi bi-pin-map" style="color:var(--color-primary)"></i>
-                                {{ r.location.name }}
+                                <i class="bi bi-pin-map" style="color:var(--color-primary)"></i>{{ r.location.name }}
                             </span>
                             {% else %}
                             <span style="color:var(--color-text-muted);font-size:.85rem">—</span>
@@ -108,34 +107,36 @@
                             <span style="color:var(--color-text-muted);font-size:.85rem">—</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <span style="font-weight:700;color:var(--color-danger)">{{ r.threshold_pct }}%</span>
-                        </td>
-                        <td>
-                            <span style="background:var(--color-primary-bg);color:var(--color-primary);padding:2px 10px;border-radius:20px;font-size:.8rem;font-weight:600">{{ r.get_time_window_display }}</span>
-                        </td>
+                        <td><span style="font-weight:700;color:var(--color-danger)">{{ r.threshold_pct }}%</span></td>
+                        <td><span style="background:var(--color-primary-bg);color:var(--color-primary);padding:2px 10px;border-radius:20px;font-size:.8rem;font-weight:600">{{ r.get_time_window_display }}</span></td>
                         <td>
                             {% if r.is_active %}
-                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> Active</span>
+                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success)"><span class="status-dot active"></span> Active</span>
                             {% else %}
-                            <span class="status-badge" style="background:var(--color-border-light);color:var(--color-text-muted)"><i class="bi bi-circle-fill" style="font-size:.5rem"></i> Paused</span>
+                            <span class="status-badge" style="background:var(--color-border-light);color:var(--color-text-muted)"><span class="status-dot inactive"></span> Paused</span>
                             {% endif %}
                         </td>
-                        <td style="color:var(--color-text-muted);font-size:.85rem">
+                        <td style="color:var(--color-text-muted);font-size:.85rem;white-space:nowrap">
                             {% if r.last_triggered %}{{ r.last_triggered|timesince }} ago{% else %}Never{% endif %}
                         </td>
                         <td style="color:var(--color-text-secondary);font-size:.85rem">{{ r.created_by.get_full_name|default:"System" }}</td>
-                        <td style="text-align:right;white-space:nowrap">
-                            <form method="post" action="{% url 'dashboard:toggle_alert_rule' r.pk %}" style="display:inline">
-                                {% csrf_token %}
-                                <button class="btn btn-sm" style="background:{% if r.is_active %}var(--color-warning-bg){% else %}var(--color-success-bg){% endif %};color:{% if r.is_active %}var(--color-warning){% else %}var(--color-success){% endif %};font-weight:600;border:none" type="submit">
-                                    {% if r.is_active %}Pause{% else %}Enable{% endif %}
-                                </button>
-                            </form>
-                            <form method="post" action="{% url 'dashboard:delete_alert_rule' r.pk %}" style="display:inline;margin-left:.25rem">
-                                {% csrf_token %}
-                                <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete this rule?')"><i class="bi bi-trash"></i></button>
-                            </form>
+                        <td class="text-end" style="padding-right:1.25rem">
+                            <div class="d-flex gap-1 justify-content-end">
+                                <form method="post" action="{% url 'dashboard:toggle_alert_rule' r.pk %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-ghost btn-sm" type="submit" title="{% if r.is_active %}Pause{% else %}Enable{% endif %}"
+                                        style="color:{% if r.is_active %}var(--color-warning){% else %}var(--color-success){% endif %}">
+                                        <i class="bi {% if r.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'dashboard:delete_alert_rule' r.pk %}" class="d-inline"
+                                      onsubmit="return confirm('Delete the rule \'{{ r.name }}\'? This cannot be undone.')">
+                                    {% csrf_token %}
+                                    <button class="btn btn-ghost btn-sm" type="submit" title="Delete Rule" style="color:var(--color-danger)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -144,9 +145,9 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <i class="bi bi-bell-slash" style="font-size:2.5rem;color:var(--color-text-muted)"></i>
+            <div class="empty-icon"><i class="bi bi-bell-slash"></i></div>
             <h6 style="color:var(--color-text-primary)">No alert rules configured</h6>
-            <p style="color:var(--color-text-muted)">Create your first rule above to start monitoring attendance thresholds.</p>
+            <p>Create your first rule above to start monitoring attendance thresholds.</p>
         </div>
         {% endif %}
     </div>

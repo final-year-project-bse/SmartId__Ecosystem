@@ -34,7 +34,7 @@
                     <span class="mc-badge success">Active</span>
                 </div>
                 <div class="mc-value">{{ total_students }}</div>
-                <div class="mc-bar"><div class="mc-bar-fill success" style="width:{% widthratio total_students total_users 100 %}%"></div></div>
+                <div class="mc-bar"><div class="mc-bar-fill success" style="width:{% if total_users %}{% widthratio total_students total_users 100 %}{% else %}0{% endif %}%"></div></div>
             </div>
         </a>
     </div>
@@ -46,7 +46,7 @@
                         <div class="mc-icon info"><i class="bi bi-check2-all"></i></div>
                         <div class="mc-title">Attendance<br>(30 days)</div>
                     </div>
-                    <span class="mc-badge info">Weekly</span>
+                    <span class="mc-badge info">30d</span>
                 </div>
                 <div class="mc-value">{{ attendance_count }}</div>
                 <div class="mc-bar"><div class="mc-bar-fill info" style="width:75%"></div></div>
@@ -83,7 +83,7 @@
                 </div>
                 <div class="mc-value">{{ total_professors }}</div>
                 <div class="mc-footer"><span>Faculty members</span></div>
-                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% widthratio total_professors total_users 100 %}%"></div></div>
+                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if total_users %}{% widthratio total_professors total_users 100 %}{% else %}0{% endif %}%"></div></div>
             </div>
         </a>
     </div>
@@ -93,7 +93,7 @@
                 <div class="mc-head">
                     <div class="mc-head-left">
                         <div class="mc-icon success"><i class="bi bi-check-circle-fill"></i></div>
-                        <div class="mc-title">Successful Logins (7d)</div>
+                        <div class="mc-title">Successful Logins (30d)</div>
                     </div>
                     <span class="mc-badge success">Healthy</span>
                 </div>

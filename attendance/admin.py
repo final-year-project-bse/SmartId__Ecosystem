@@ -1,8 +1,16 @@
 from django.contrib import admin
 from .models import (
-    Location, AttendanceSession, AttendanceRecord, AccessLog,
+    Department, Location, AttendanceSession, AttendanceRecord, AccessLog,
     Course, CourseEnrollment, LeaveRequest, TimetableSlot,
 )
+
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'code')
+    ordering = ('name',)
 
 
 @admin.register(Location)

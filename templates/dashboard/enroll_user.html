@@ -1,0 +1,752 @@
+{% extends 'base.html' %}
+{% block title %}Enroll User - SmartID{% endblock %}
+{% block sb_users %}active{% endblock %}
+{% block extra_css %}
+<style>
+/* Role selector cards */
+.role-select-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 2rem; }
+@media(max-width:640px){ .role-select-grid { grid-template-columns: repeat(2,1fr); } }
+.role-card { border: 2px solid var(--color-border); border-radius: 14px; padding: 1.25rem 1rem; text-align: center; cursor: pointer; transition: border-color .18s, background .18s, transform .12s; background: var(--color-bg-card); }
+.role-card:hover { border-color: var(--color-primary); background: var(--color-primary-bg); transform: translateY(-2px); }
+.role-card.selected { border-color: var(--color-primary); background: var(--color-primary-bg); }
+.role-card .rc-icon { width: 52px; height: 52px; border-radius: 12px; margin: 0 auto .75rem; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; }
+.role-card .rc-label { font-weight: 700; font-size: .95rem; color: var(--color-text-primary); }
+.role-card .rc-desc { font-size: .75rem; color: var(--color-text-muted); margin-top: .2rem; }
+
+/* Form sections */
+.enroll-section { margin-bottom: 1.75rem; }
+.enroll-section-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); padding-bottom: .5rem; margin-bottom: 1rem; }
+.field-wrap { margin-bottom: 1.1rem; }
+.field-wrap label { font-size: .9rem; font-weight: 600; color: var(--color-text-primary); margin-bottom: .35rem; display: block; }
+.field-wrap .field-error { font-size: .8rem; color: var(--color-danger); margin-top: .25rem; }
+.field-wrap .field-help { font-size: .78rem; color: var(--color-text-muted); margin-top: .25rem; }
+.auth-method-badge { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem; border-radius: 999px; font-size: .82rem; font-weight: 600; }
+
+/* University DB fetch */
+.uni-fetch-wrap { display: flex; gap: .5rem; }
+.uni-fetch-wrap input { flex: 1; }
+.uni-record-found { background: var(--color-success-bg); border: 1px solid var(--color-success); border-radius: 10px; padding: .75rem 1rem; margin-top: .6rem; font-size: .85rem; }
+.uni-record-not-found { background: var(--color-warning-bg); border: 1px solid var(--color-warning); border-radius: 10px; padding: .75rem 1rem; margin-top: .6rem; font-size: .85rem; }
+
+/* Camera */
+#faceVideo { width: 100%; max-width: 380px; height: 260px; background: #111; border-radius: 10px; object-fit: cover; display: block; }
+.face-status { font-size: .85rem; margin-top: .4rem; display: none; }
+
+/* Checkbox */
+.check-row { display: flex; align-items: flex-start; gap: .65rem; padding: .7rem 1rem; border-radius: 10px; border: 2px solid var(--color-border); margin-bottom: .6rem; }
+.check-row input[type=checkbox] { width: 1.1rem; height: 1.1rem; accent-color: var(--color-primary); flex-shrink: 0; margin-top: .15rem; }
+.check-row label { font-size: .88rem; font-weight: 500; color: var(--color-text-primary); margin: 0; cursor: pointer; }
+
+/* Pi fingerprint notice */
+.pi-notice { background: var(--color-warning-bg); border: 1px solid var(--color-warning); border-radius: 10px; padding: .85rem 1rem; display: flex; gap: .75rem; align-items: flex-start; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1><i class="bi bi-person-plus"></i> Enroll New User</h1>
+        <p>Select a role, then fill in the details. Attendance methods are assigned automatically.</p>
+    </div>
+    <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left"></i> Back to Users</a>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ── Step 1: Role selector ── #}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="enroll-section-title">Step 1 — Select Role</div>
+        <div class="role-select-grid" id="roleGrid">
+
+            <div class="role-card {% if role == 'student' %}selected{% endif %}" data-role="student" onclick="selectRole('student')">
+                <div class="rc-icon" style="background:var(--color-primary-bg);color:var(--color-primary)"><i class="bi bi-mortarboard-fill"></i></div>
+                <div class="rc-label">Student</div>
+                <div class="rc-desc">2-factor attendance</div>
+            </div>
+
+            <div class="role-card {% if role == 'professor' %}selected{% endif %}" data-role="professor" onclick="selectRole('professor')">
+                <div class="rc-icon" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-person-workspace"></i></div>
+                <div class="rc-label">Teacher</div>
+                <div class="rc-desc">Gender-based auth</div>
+            </div>
+
+            <div class="role-card {% if role == 'parent' %}selected{% endif %}" data-role="parent" onclick="selectRole('parent')">
+                <div class="rc-icon" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-house-heart-fill"></i></div>
+                <div class="rc-label">Parent</div>
+                <div class="rc-desc">Dashboard + reports</div>
+            </div>
+
+            <div class="role-card {% if role == 'admin' %}selected{% endif %}" data-role="admin" onclick="selectRole('admin')">
+                <div class="rc-icon" style="background:var(--color-danger-bg);color:var(--color-danger)"><i class="bi bi-shield-lock-fill"></i></div>
+                <div class="rc-label">Admin</div>
+                <div class="rc-desc">Fingerprint auth</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{# ── Step 2: Role-specific form (shown when role selected) ── #}
+<div id="enrollFormWrap" {% if not role %}style="display:none"{% endif %}>
+<form method="post" id="enrollForm">
+{% csrf_token %}
+<input type="hidden" name="role" id="roleInput" value="{{ role }}">
+
+{# ═══════════════ STUDENT FORM ═══════════════ #}
+<div class="role-form" id="form-student" {% if role != 'student' %}style="display:none"{% endif %}>
+
+    {# University DB lookup #}
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="enroll-section-title"><i class="bi bi-database-check"></i> University Record Lookup</div>
+            <p style="font-size:.87rem;color:var(--color-text-muted);margin-bottom:.75rem">Enter the registration number to auto-fill student data from the university database.</p>
+            <div class="uni-fetch-wrap">
+                <input type="text" id="uniRegInput" class="form-control" placeholder="e.g. FA22-BSE-069" style="text-transform:uppercase">
+                <button type="button" class="btn btn-outline-primary" onclick="fetchUniRecord()"><i class="bi bi-search"></i> Fetch</button>
+            </div>
+            <div id="uniFetchResult" style="display:none"></div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-12 col-lg-8">
+
+            {# Personal Info #}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-person"></i> Personal Information</div>
+
+                    <div class="field-wrap">
+                        <label for="s_institutional_id">Registration Number *</label>
+                        <input type="text" name="institutional_id" id="s_institutional_id" class="form-control"
+                               placeholder="FA22-BSE-069" style="text-transform:uppercase"
+                               value="{% if form and role == 'student' %}{{ form.institutional_id.value|default:'' }}{% endif %}" required>
+                        <div class="field-help">Format: XX00-XXX-000. This is the student's primary login ID.</div>
+                        {% if form and role == 'student' and form.institutional_id.errors %}<div class="field-error">{{ form.institutional_id.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>First Name *</label>
+                                <input type="text" name="first_name" id="s_first_name" class="form-control"
+                                       value="{% if form and role == 'student' %}{{ form.first_name.value|default:'' }}{% endif %}" required>
+                                {% if form and role == 'student' and form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Last Name *</label>
+                                <input type="text" name="last_name" id="s_last_name" class="form-control"
+                                       value="{% if form and role == 'student' %}{{ form.last_name.value|default:'' }}{% endif %}" required>
+                                {% if form and role == 'student' and form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Age *</label>
+                                <input type="number" name="age" id="s_age" class="form-control" min="1" max="100"
+                                       value="{% if form and role == 'student' %}{{ form.age.value|default:'' }}{% endif %}" required>
+                                {% if form and role == 'student' and form.age.errors %}<div class="field-error">{{ form.age.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Gender *</label>
+                                <select name="gender" id="s_gender" class="form-select" onchange="updateStudentAuth()" required>
+                                    <option value="">— Select —</option>
+                                    <option value="male" {% if form and role == 'student' and form.gender.value == 'male' %}selected{% endif %}>Male</option>
+                                    <option value="female" {% if form and role == 'student' and form.gender.value == 'female' %}selected{% endif %}>Female</option>
+                                </select>
+                                {% if form and role == 'student' and form.gender.errors %}<div class="field-error">{{ form.gender.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label>Department *</label>
+                        <select name="department" id="s_department" class="form-select" required>
+                            <option value="">— Select department —</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.pk }}" {% if form and role == 'student' and form.department.value == dept.pk|stringformat:"s" %}selected{% endif %}>{{ dept.name }} ({{ dept.code }})</option>
+                            {% endfor %}
+                        </select>
+                        {% if form and role == 'student' and form.department.errors %}<div class="field-error">{{ form.department.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="field-wrap">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" id="s_email" class="form-control"
+                               value="{% if form and role == 'student' %}{{ form.email.value|default:'' }}{% endif %}" required>
+                        {% if form and role == 'student' and form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Student Contact</label>
+                                <input type="text" name="phone" class="form-control" placeholder="+92-XXX-XXXXXXX"
+                                       value="{% if form and role == 'student' %}{{ form.phone.value|default:'' }}{% endif %}">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Parent / Guardian Contact</label>
+                                <input type="text" name="parent_contact" id="s_parent_contact" class="form-control" placeholder="+92-XXX-XXXXXXX"
+                                       value="{% if form and role == 'student' %}{{ form.parent_contact.value|default:'' }}{% endif %}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Password *</label>
+                                <input type="password" name="password1" class="form-control" placeholder="Student sets this" required>
+                                {% if form and role == 'student' and form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Confirm Password *</label>
+                                <input type="password" name="password2" class="form-control" placeholder="Confirm" required>
+                                {% if form and role == 'student' and form.password2.errors %}<div class="field-error">{{ form.password2.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Consent #}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-shield-check"></i> Digital Consent Form</div>
+                    {% if form and role == 'student' and form.non_field_errors %}
+                    <div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>
+                    {% endif %}
+                    <div class="check-row"><input type="checkbox" name="consent_rfid" id="s_rfid_consent" checked><label for="s_rfid_consent">I consent to RFID card data storage for identity verification</label></div>
+                    <div class="check-row"><input type="checkbox" name="consent_biometric" id="s_bio_consent" checked><label for="s_bio_consent">I consent to biometric data capture (face photo / fingerprint) for authentication</label></div>
+                    <div class="check-row"><input type="checkbox" name="data_retention" id="s_data_ret" required><label for="s_data_ret">I acknowledge the data retention and deletion policy *</label></div>
+                </div>
+            </div>
+
+        </div>
+        <div class="col-12 col-lg-4">
+
+            {# Auth method preview — updates on gender selection #}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-cpu"></i> Attendance Method</div>
+                    <div id="s_auth_preview">
+                        <p style="font-size:.85rem;color:var(--color-text-muted)">Select gender to see the attendance method that will be used.</p>
+                    </div>
+                </div>
+            </div>
+
+            {# RFID capture (always for students) #}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-credit-card-2-front"></i> RFID Card</div>
+                    <p style="font-size:.85rem;color:var(--color-text-muted);margin-bottom:.75rem">Scan the student's RFID card on the reader connected to this computer, or enter the tag manually.</p>
+                    <div class="field-wrap">
+                        <label>RFID Tag</label>
+                        <input type="text" name="rfid_tag" class="form-control" placeholder="Scan card or type tag">
+                        <div class="field-help">Leave blank to register the card later from User Management.</div>
+                    </div>
+                </div>
+            </div>
+
+            {# Face capture (male students only) #}
+            <div class="card mb-3" id="s_face_card" style="display:none">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-person-bounding-box"></i> Face Photo</div>
+                    <p style="font-size:.85rem;color:var(--color-text-muted);margin-bottom:.75rem">Required for male students. Position face in frame and capture.</p>
+                    <video id="faceVideo" autoplay playsinline muted></video>
+                    <canvas id="faceCanvas" style="display:none"></canvas>
+                    <input type="hidden" name="face_capture" id="faceCaptureInput">
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnStartCam"><i class="bi bi-camera-video"></i> Start</button>
+                        <button type="button" class="btn btn-primary btn-sm flex-fill" id="btnCapture" disabled><i class="bi bi-camera-fill"></i> Capture</button>
+                    </div>
+                    <p class="face-status" id="faceOk" style="color:var(--color-success)"><i class="bi bi-check-circle"></i> Captured</p>
+                    <p class="face-status" id="faceWarn" style="color:var(--color-warning)"><i class="bi bi-exclamation-triangle"></i> No photo — student can't use face auth until enrolled later</p>
+                </div>
+            </div>
+
+            {# Fingerprint notice (female students only) #}
+            <div class="card mb-3" id="s_fp_card" style="display:none">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-fingerprint"></i> Fingerprint</div>
+                    <div class="pi-notice">
+                        <i class="bi bi-exclamation-triangle" style="color:var(--color-warning);flex-shrink:0;margin-top:.1rem"></i>
+                        <div>
+                            <div style="font-weight:600;font-size:.88rem">Enroll on Pi hardware</div>
+                            <p style="margin:.2rem 0 0;font-size:.82rem;color:var(--color-text-secondary)">After creating the account, run <code>fingerprint_enroll.py</code> on the Raspberry Pi with the fingerprint scanner to capture and register this student's fingerprint.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Enroll Student</button>
+        <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
+    </div>
+</div>
+
+
+{# ═══════════════ TEACHER FORM ═══════════════ #}
+<div class="role-form" id="form-professor" {% if role != 'professor' %}style="display:none"{% endif %}>
+    <div class="row g-3">
+        <div class="col-12 col-lg-8">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-person"></i> Teacher Information</div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>First Name *</label>
+                                <input type="text" name="first_name" class="form-control"
+                                       value="{% if form and role == 'professor' %}{{ form.first_name.value|default:'' }}{% endif %}" required>
+                                {% if form and role == 'professor' and form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Last Name *</label>
+                                <input type="text" name="last_name" class="form-control"
+                                       value="{% if form and role == 'professor' %}{{ form.last_name.value|default:'' }}{% endif %}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" class="form-control"
+                               value="{% if form and role == 'professor' %}{{ form.email.value|default:'' }}{% endif %}" required>
+                        <div class="field-help">Used as the primary login identifier. A staff ID (TCH-…) will be auto-generated.</div>
+                        {% if form and role == 'professor' and form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Department *</label>
+                                <select name="department" class="form-select" required>
+                                    <option value="">— Select —</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.pk }}" {% if form and role == 'professor' and form.department.value == dept.pk|stringformat:"s" %}selected{% endif %}>{{ dept.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if form and role == 'professor' and form.department.errors %}<div class="field-error">{{ form.department.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Gender *</label>
+                                <select name="gender" class="form-select" onchange="updateTeacherAuth()" required>
+                                    <option value="">— Select —</option>
+                                    <option value="male" {% if form and role == 'professor' and form.gender.value == 'male' %}selected{% endif %}>Male</option>
+                                    <option value="female" {% if form and role == 'professor' and form.gender.value == 'female' %}selected{% endif %}>Female</option>
+                                </select>
+                                {% if form and role == 'professor' and form.gender.errors %}<div class="field-error">{{ form.gender.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label>Contact Number</label>
+                        <input type="text" name="phone" class="form-control" placeholder="+92-XXX-XXXXXXX"
+                               value="{% if form and role == 'professor' %}{{ form.phone.value|default:'' }}{% endif %}">
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Password *</label>
+                                <input type="password" name="password1" class="form-control" required>
+                                {% if form and role == 'professor' and form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Confirm Password *</label>
+                                <input type="password" name="password2" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="enroll-section-title mt-3"><i class="bi bi-shield-check"></i> Consent</div>
+                    {% if form and role == 'professor' and form.non_field_errors %}
+                    <div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>
+                    {% endif %}
+                    <div class="check-row" id="t_rfid_consent_row"><input type="checkbox" name="consent_rfid" id="t_rfid_consent"><label for="t_rfid_consent">I consent to RFID card data storage</label></div>
+                    <div class="check-row" id="t_bio_consent_row"><input type="checkbox" name="consent_biometric" id="t_bio_consent"><label for="t_bio_consent">I consent to biometric data capture (face recognition)</label></div>
+                    <div class="check-row"><input type="checkbox" name="data_retention" required><label>I acknowledge the data retention and deletion policy *</label></div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Enroll Teacher</button>
+                <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
+            </div>
+        </div>
+        <div class="col-12 col-lg-4">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-cpu"></i> Attendance Method</div>
+                    <div id="t_auth_preview"><p style="font-size:.85rem;color:var(--color-text-muted)">Select gender to see the attendance method.</p></div>
+                </div>
+            </div>
+            <div class="card mb-3" id="t_face_card" style="display:none">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-person-bounding-box"></i> Face Photo</div>
+                    <p style="font-size:.85rem;color:var(--color-text-muted);margin-bottom:.75rem">Required for male teachers.</p>
+                    <video id="faceVideoT" autoplay playsinline muted style="width:100%;max-width:380px;height:220px;background:#111;border-radius:10px;object-fit:cover;display:block"></video>
+                    <canvas id="faceCanvasT" style="display:none"></canvas>
+                    <input type="hidden" name="face_capture" id="faceCaptureInputT">
+                    <div class="d-flex gap-2 mt-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm flex-fill" id="btnStartCamT"><i class="bi bi-camera-video"></i> Start</button>
+                        <button type="button" class="btn btn-primary btn-sm flex-fill" id="btnCaptureT" disabled><i class="bi bi-camera-fill"></i> Capture</button>
+                    </div>
+                    <p class="face-status" id="faceOkT" style="color:var(--color-success)"><i class="bi bi-check-circle"></i> Captured</p>
+                </div>
+            </div>
+            <div class="card mb-3" id="t_rfid_card" style="display:none">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-credit-card-2-front"></i> RFID Card</div>
+                    <div class="field-wrap">
+                        <label>RFID Tag</label>
+                        <input type="text" name="rfid_tag" class="form-control" placeholder="Scan or enter tag">
+                        <div class="field-help">Required for female teachers. Can be registered later.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{# ═══════════════ PARENT FORM ═══════════════ #}
+<div class="role-form" id="form-parent" {% if role != 'parent' %}style="display:none"{% endif %}>
+    <div class="row g-3 justify-content-center">
+        <div class="col-12 col-lg-7">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-link-45deg"></i> Student Link</div>
+                    <p style="font-size:.87rem;color:var(--color-text-muted);margin-bottom:.75rem">Enter the student's registration number to link this parent account.</p>
+                    <div class="uni-fetch-wrap">
+                        <input type="text" name="student_reg_number" id="p_reg" class="form-control"
+                               placeholder="FA22-BSE-069" style="text-transform:uppercase"
+                               value="{% if form and role == 'parent' %}{{ form.student_reg_number.value|default:'' }}{% endif %}" required>
+                        <button type="button" class="btn btn-outline-primary" onclick="fetchStudentForParent()"><i class="bi bi-search"></i> Verify</button>
+                    </div>
+                    <div id="p_student_result" style="display:none;margin-top:.6rem"></div>
+                    {% if form and role == 'parent' and form.student_reg_number.errors %}<div class="field-error mt-1">{{ form.student_reg_number.errors.0 }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-person"></i> Parent Information</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>First Name *</label>
+                                <input type="text" name="first_name" class="form-control"
+                                       value="{% if form and role == 'parent' %}{{ form.first_name.value|default:'' }}{% endif %}" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Last Name *</label>
+                                <input type="text" name="last_name" class="form-control"
+                                       value="{% if form and role == 'parent' %}{{ form.last_name.value|default:'' }}{% endif %}" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-wrap">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" class="form-control"
+                               value="{% if form and role == 'parent' %}{{ form.email.value|default:'' }}{% endif %}" required>
+                        <div class="field-help">Attendance reports will be emailed to this address.</div>
+                        {% if form and role == 'parent' and form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="field-wrap">
+                        <label>Phone Number *</label>
+                        <input type="text" name="phone" class="form-control" placeholder="+92-XXX-XXXXXXX"
+                               value="{% if form and role == 'parent' %}{{ form.phone.value|default:'' }}{% endif %}" required>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Password *</label>
+                                <input type="password" name="password1" class="form-control" required>
+                                {% if form and role == 'parent' and form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Confirm Password *</label>
+                                <input type="password" name="password2" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Create Parent Account</button>
+                <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{# ═══════════════ ADMIN FORM ═══════════════ #}
+<div class="role-form" id="form-admin" {% if role != 'admin' %}style="display:none"{% endif %}>
+    <div class="row g-3 justify-content-center">
+        <div class="col-12 col-lg-6">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-person-gear"></i> Admin Account</div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>First Name *</label>
+                                <input type="text" name="first_name" class="form-control"
+                                       value="{% if form and role == 'admin' %}{{ form.first_name.value|default:'' }}{% endif %}" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Last Name *</label>
+                                <input type="text" name="last_name" class="form-control"
+                                       value="{% if form and role == 'admin' %}{{ form.last_name.value|default:'' }}{% endif %}" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-wrap">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" class="form-control"
+                               value="{% if form and role == 'admin' %}{{ form.email.value|default:'' }}{% endif %}" required>
+                        {% if form and role == 'admin' and form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="field-wrap">
+                        <label>Contact</label>
+                        <input type="text" name="phone" class="form-control" placeholder="+92-XXX-XXXXXXX"
+                               value="{% if form and role == 'admin' %}{{ form.phone.value|default:'' }}{% endif %}">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Password *</label>
+                                <input type="password" name="password1" class="form-control" required>
+                                {% if form and role == 'admin' and form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="field-wrap">
+                                <label>Confirm Password *</label>
+                                <input type="password" name="password2" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="enroll-section-title"><i class="bi bi-fingerprint"></i> Attendance Method</div>
+                    <div style="display:flex;align-items:center;gap:.75rem;padding:.75rem;background:var(--color-primary-bg);border-radius:10px">
+                        <div style="width:42px;height:42px;border-radius:10px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.2rem"><i class="bi bi-fingerprint"></i></div>
+                        <div>
+                            <div style="font-weight:600;font-size:.9rem">Fingerprint Only</div>
+                            <div style="font-size:.8rem;color:var(--color-text-muted)">Admin attendance is marked by fingerprint scan. Run <code>fingerprint_enroll.py</code> on the Pi after creating this account.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-person-check"></i> Create Admin Account</button>
+                <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /enrollFormWrap #}
+
+<script>
+var currentRole = '{{ role|default:"" }}';
+var fetchUrl   = '{% url "dashboard:fetch_university_record" %}';
+
+function selectRole(role) {
+    currentRole = role;
+    document.getElementById('roleInput').value = role;
+    document.querySelectorAll('.role-card').forEach(function(c) {
+        c.classList.toggle('selected', c.getAttribute('data-role') === role);
+    });
+    document.querySelectorAll('.role-form').forEach(function(f) {
+        f.style.display = f.id === 'form-' + role ? '' : 'none';
+    });
+    document.getElementById('enrollFormWrap').style.display = '';
+    window.scrollTo({ top: document.getElementById('enrollFormWrap').offsetTop - 20, behavior: 'smooth' });
+}
+
+// ── University record fetch (students) ──
+function fetchUniRecord() {
+    var reg = document.getElementById('uniRegInput').value.trim().toUpperCase();
+    if (!reg) return;
+    document.getElementById('uniRegInput').value = reg;
+    fetch(fetchUrl + '?reg=' + encodeURIComponent(reg))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            var el = document.getElementById('uniFetchResult');
+            el.style.display = 'block';
+            if (d.found) {
+                el.innerHTML = '<div class="uni-record-found"><i class="bi bi-check-circle-fill" style="color:var(--color-success)"></i> <strong>Record found</strong> — fields have been pre-filled. Review before saving.</div>';
+                // Auto-fill fields
+                if (d.full_name) {
+                    var parts = d.full_name.trim().split(' ');
+                    document.getElementById('s_first_name').value = parts[0] || '';
+                    document.getElementById('s_last_name').value = parts.slice(1).join(' ') || '';
+                }
+                document.getElementById('s_institutional_id').value = reg;
+                if (d.email) document.getElementById('s_email').value = d.email;
+                if (d.age)   document.getElementById('s_age').value = d.age;
+                if (d.department_id) document.getElementById('s_department').value = d.department_id;
+            } else {
+                el.innerHTML = '<div class="uni-record-not-found"><i class="bi bi-exclamation-triangle" style="color:var(--color-warning)"></i> ' + (d.message || 'No record found. Fill in details manually.') + '</div>';
+                document.getElementById('s_institutional_id').value = reg;
+            }
+        })
+        .catch(function(){ alert('Error contacting server. Fill in details manually.'); });
+}
+
+// ── Student verification for parent form ──
+function fetchStudentForParent() {
+    var reg = document.getElementById('p_reg').value.trim().toUpperCase();
+    document.getElementById('p_reg').value = reg;
+    fetch(fetchUrl + '?reg=' + encodeURIComponent(reg))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            var el = document.getElementById('p_student_result');
+            el.style.display = 'block';
+            if (d.found) {
+                el.innerHTML = '<div class="uni-record-found"><i class="bi bi-check-circle-fill" style="color:var(--color-success)"></i> Student <strong>' + d.full_name + '</strong> found in university records.</div>';
+            } else {
+                // Try enrolled students via same endpoint — give friendly message
+                el.innerHTML = '<div class="uni-record-not-found"><i class="bi bi-info-circle"></i> Not in university DB — the student must already be enrolled in SmartID for linking. Proceed and the system will verify on save.</div>';
+            }
+        });
+}
+
+// ── Student auth method preview ──
+var S_AUTH = {
+    male:   { badge: 'primary', label: '<i class="bi bi-credit-card-2-front"></i> RFID Scan → <i class="bi bi-person-bounding-box"></i> Face Recognition', desc: 'Student taps RFID card (identity), then face is verified (authentication).' },
+    female: { badge: 'info',    label: '<i class="bi bi-credit-card-2-front"></i> RFID Scan → <i class="bi bi-fingerprint"></i> Fingerprint Scan', desc: 'Student taps RFID card (identity), then fingerprint is verified (authentication).' },
+};
+function updateStudentAuth() {
+    var g = document.getElementById('s_gender').value;
+    var el = document.getElementById('s_auth_preview');
+    if (!g || !S_AUTH[g]) { el.innerHTML = '<p style="font-size:.85rem;color:var(--color-text-muted)">Select gender to see the attendance method.</p>'; return; }
+    var a = S_AUTH[g];
+    el.innerHTML = '<span class="auth-method-badge" style="background:var(--color-' + a.badge + '-bg);color:var(--color-' + a.badge + ')">' + a.label + '</span><p style="font-size:.8rem;color:var(--color-text-muted);margin:.6rem 0 0">' + a.desc + '</p>';
+    document.getElementById('s_face_card').style.display = g === 'male' ? '' : 'none';
+    document.getElementById('s_fp_card').style.display   = g === 'female' ? '' : 'none';
+    if (g !== 'male') stopCam('faceVideo', 'faceStream');
+}
+
+// ── Teacher auth method preview ──
+var T_AUTH = {
+    male:   { badge: 'primary', label: '<i class="bi bi-person-bounding-box"></i> Face Recognition', desc: 'Pi uses timetable to identify expected teacher; face confirms presence.' },
+    female: { badge: 'info',    label: '<i class="bi bi-credit-card-2-front"></i> RFID Card', desc: 'Teacher taps RFID card to mark attendance.' },
+};
+function updateTeacherAuth() {
+    var sel = document.querySelector('#form-professor select[name=gender]');
+    var g = sel ? sel.value : '';
+    var el = document.getElementById('t_auth_preview');
+    if (!g || !T_AUTH[g]) { el.innerHTML = '<p style="font-size:.85rem;color:var(--color-text-muted)">Select gender to see the attendance method.</p>'; return; }
+    var a = T_AUTH[g];
+    el.innerHTML = '<span class="auth-method-badge" style="background:var(--color-' + a.badge + '-bg);color:var(--color-' + a.badge + ')">' + a.label + '</span><p style="font-size:.8rem;color:var(--color-text-muted);margin:.6rem 0 0">' + a.desc + '</p>';
+    document.getElementById('t_face_card').style.display = g === 'male' ? '' : 'none';
+    document.getElementById('t_rfid_card').style.display = g === 'female' ? '' : 'none';
+    document.getElementById('t_bio_consent_row').style.display = g === 'male' ? '' : 'none';
+    document.getElementById('t_rfid_consent_row').style.display = g === 'female' ? '' : 'none';
+    if (g !== 'male') stopCam('faceVideoT', 'faceStreamT');
+}
+
+// ── Camera helpers ──
+var faceStream = null, faceStreamT = null;
+function stopCam(videoId, streamVar) {
+    var s = streamVar === 'faceStream' ? faceStream : faceStreamT;
+    if (s) { s.getTracks().forEach(function(t){ t.stop(); }); }
+    if (streamVar === 'faceStream') faceStream = null; else faceStreamT = null;
+    var v = document.getElementById(videoId); if (v) v.srcObject = null;
+}
+function startCam(videoId, streamVar, startBtnId, capBtnId) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
+        .then(function(s) {
+            if (streamVar === 'faceStream') faceStream = s; else faceStreamT = s;
+            document.getElementById(videoId).srcObject = s;
+            document.getElementById(capBtnId).disabled = false;
+            document.getElementById(startBtnId).innerHTML = '<i class="bi bi-stop-circle"></i> Stop';
+        })
+        .catch(function(){ alert('Camera access denied or not available.'); });
+}
+function doCapture(videoId, canvasId, inputId, okId, warnId) {
+    var v = document.getElementById(videoId);
+    var c = document.getElementById(canvasId);
+    if (!v || !c || !v.srcObject) return;
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0);
+    document.getElementById(inputId).value = c.toDataURL('image/jpeg', 0.85);
+    if (okId)   { document.getElementById(okId).style.display = 'block'; }
+    if (warnId) { document.getElementById(warnId).style.display = 'none'; }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Student camera
+    var btnS = document.getElementById('btnStartCam');
+    var btnC = document.getElementById('btnCapture');
+    if (btnS) btnS.addEventListener('click', function() {
+        if (faceStream) { stopCam('faceVideo','faceStream'); btnS.innerHTML='<i class="bi bi-camera-video"></i> Start'; btnC.disabled=true; }
+        else startCam('faceVideo','faceStream','btnStartCam','btnCapture');
+    });
+    if (btnC) btnC.addEventListener('click', function() { doCapture('faceVideo','faceCanvas','faceCaptureInput','faceOk','faceWarn'); });
+
+    // Teacher camera
+    var btnST = document.getElementById('btnStartCamT');
+    var btnCT = document.getElementById('btnCaptureT');
+    if (btnST) btnST.addEventListener('click', function() {
+        if (faceStreamT) { stopCam('faceVideoT','faceStreamT'); btnST.innerHTML='<i class="bi bi-camera-video"></i> Start'; btnCT.disabled=true; }
+        else startCam('faceVideoT','faceStreamT','btnStartCamT','btnCaptureT');
+    });
+    if (btnCT) btnCT.addEventListener('click', function() { doCapture('faceVideoT','faceCanvasT','faceCaptureInputT','faceOkT',null); });
+
+    // Stop camera on form submit
+    document.getElementById('enrollForm').addEventListener('submit', function() {
+        stopCam('faceVideo','faceStream');
+        stopCam('faceVideoT','faceStreamT');
+    });
+
+    // Re-run previews if role already selected (after validation error reload)
+    {% if role == 'student' %}updateStudentAuth();{% endif %}
+    {% if role == 'professor' %}updateTeacherAuth();{% endif %}
+});
+</script>
+{% endblock %}

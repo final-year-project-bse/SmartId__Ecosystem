@@ -52,7 +52,7 @@
                 </div>
                 <div class="mc-value">{{ today_attendance }}</div>
                 <div class="mc-footer"><span>Records marked today</span></div>
-                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if today_attendance %}65{% else %}0{% endif %}%"></div></div>
+                <div class="mc-bar"><div class="mc-bar-fill info" style="width:{% if total_students and today_attendance %}{% widthratio today_attendance total_students 100 %}{% else %}0{% endif %}%"></div></div>
             </div>
         </a>
     </div>

@@ -131,3 +131,24 @@ class DeviceOfflineEventSerializer(serializers.Serializer):
 class DeviceOfflineBatchSerializer(serializers.Serializer):
     """Pi sends queued events when back online."""
     events = DeviceOfflineEventSerializer(many=True)
+
+
+class DeviceFingerprintEnrollSerializer(serializers.Serializer):
+    """Pi enrolled a user's fingerprint into sensor; report slot mapping to server."""
+    user_id = serializers.IntegerField(required=False)
+    institutional_id = serializers.CharField(required=False, max_length=50)
+    slot_position = serializers.IntegerField(min_value=0, max_value=127)
+
+    def validate(self, data):
+        if not data.get('user_id') and not data.get('institutional_id'):
+            raise serializers.ValidationError('Either user_id or institutional_id is required.')
+        return data
+
+
+class DeviceFingerprintScanSerializer(serializers.Serializer):
+    """Pi matched a fingerprint to a slot; server resolves user and marks attendance."""
+    session_id = serializers.IntegerField()
+    slot_position = serializers.IntegerField(min_value=0, max_value=127)
+    confidence = serializers.IntegerField(required=False, default=0,
+                                          help_text='Sensor confidence score (0-300)')
+    timestamp = serializers.DateTimeField(required=False)

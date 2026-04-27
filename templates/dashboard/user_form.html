@@ -12,9 +12,9 @@
 .app-wrap .user-form-card .auth-form select { width: 100%; height: 48px; padding: 0 1rem; font-size: 1rem; border: 2px solid var(--color-border); border-radius: 10px; background: #fff; transition: border-color 0.2s, box-shadow 0.2s; }
 .app-wrap .user-form-card .auth-form input:focus,
 .app-wrap .user-form-card .auth-form select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-glow); }
-.app-wrap .user-form-card .auth-form .checkbox-wrap { min-height: 48px; padding: 0.65rem 1rem; border-radius: 10px; border: 2px solid var(--color-border); }
-.app-wrap .user-form-card .auth-form .checkbox-wrap input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--color-primary); }
-/* Wizard */
+.app-wrap .user-form-card .auth-form .checkbox-wrap { min-height: 48px; padding: 0.65rem 1rem; border-radius: 10px; border: 2px solid var(--color-border); display: flex; align-items: center; gap: 0.65rem; }
+.app-wrap .user-form-card .auth-form .checkbox-wrap input[type="checkbox"] { width: 1.15rem; height: 1.15rem; accent-color: var(--color-primary); flex-shrink: 0; }
+/* Wizard (create only) */
 .wizard-progress { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; }
 .wizard-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--color-border); transition: background 0.2s; }
 .wizard-dot.active { background: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-glow); }
@@ -36,7 +36,61 @@
         <div class="card auth-card user-form-card">
             <div class="card-body">
                 <h2 class="auth-title">{{ form_title }}</h2>
+
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger mb-3">{% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}</div>
+                {% endif %}
+
+                {# ══════════════════════════════════════════════════════
+                   EDIT MODE — flat single-step form
+                   (target_user is set by edit_user view)
+                   ══════════════════════════════════════════════════════ #}
+                {% if target_user %}
+                <p class="auth-subtitle">Update account details for <strong>{{ target_user.get_full_name }}</strong>.</p>
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+
+                    <div class="wizard-step-title" style="margin-bottom:1rem"><i class="bi bi-person"></i> Identity</div>
+                    <div class="field-wrap">{{ form.email.label_tag }}{{ form.email }}{% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}</div>
+                    <div class="field-wrap">{{ form.institutional_id.label_tag }}{{ form.institutional_id }}{% if form.institutional_id.errors %}<div class="field-error">{{ form.institutional_id.errors.0 }}</div>{% endif %}</div>
+                    <div class="row g-2">
+                        <div class="col-6"><div class="field-wrap">{{ form.first_name.label_tag }}{{ form.first_name }}{% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}</div></div>
+                        <div class="col-6"><div class="field-wrap">{{ form.last_name.label_tag }}{{ form.last_name }}{% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}</div></div>
+                    </div>
+                    <div class="field-wrap">{{ form.role.label_tag }}{{ form.role }}{% if form.role.errors %}<div class="field-error">{{ form.role.errors.0 }}</div>{% endif %}</div>
+                    <div class="field-wrap">{{ form.phone.label_tag }}{{ form.phone }}{% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}</div>
+
+                    <div class="wizard-step-title" style="margin-top:1.5rem;margin-bottom:1rem"><i class="bi bi-toggle-on"></i> Account Status</div>
+                    <div class="field-wrap">
+                        <div class="checkbox-wrap">
+                            {{ form.is_active }}
+                            <label for="{{ form.is_active.id_for_label }}" style="margin-bottom:0;font-weight:500">{{ form.is_active.label }}</label>
+                        </div>
+                        {% if form.is_active.errors %}<div class="field-error">{{ form.is_active.errors.0 }}</div>{% endif %}
+                        <div class="help" style="font-size:0.82rem;color:var(--color-text-muted);margin-top:0.4rem">Deactivating prevents the user from logging in without deleting their data.</div>
+                    </div>
+
+                    <div class="wizard-actions">
+                        <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+                        <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
+                    </div>
+                </form>
+
+                {# ══════════════════════════════════════════════════════
+                   CREATE MODE — 3-step enrollment wizard
+                   ══════════════════════════════════════════════════════ #}
+                {% else %}
                 <p class="auth-subtitle">Complete the steps below. You can add face and fingerprint data later.</p>
+
+                {# Error summary visible regardless of active step #}
+                {% if form.errors and not form.non_field_errors %}
+                <div class="alert alert-danger mb-3" id="wizardErrorSummary" style="display:none">
+                    <strong>Please fix the errors below before submitting.</strong>
+                    <ul class="mb-0 mt-1" style="font-size:0.88rem">
+                        {% for field in form %}{% if field.errors %}<li>{{ field.label }}: {{ field.errors.0 }}</li>{% endif %}{% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
 
                 <div class="wizard-progress">
                     <span class="wizard-dot active" id="dot1" data-step="1"></span>
@@ -46,25 +100,22 @@
 
                 <form method="post" class="auth-form" id="enrollForm">
                     {% csrf_token %}
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger">{% for err in form.non_field_errors %}<div>{{ err }}</div>{% endfor %}</div>
-                    {% endif %}
 
                     {# ── Step 1: Basic information ── #}
                     <div class="wizard-step active" data-step="1">
                         <div class="wizard-step-title"><i class="bi bi-person-plus"></i> Step 1 — Basic information</div>
                         <div class="field-wrap">{{ form.email.label_tag }}{{ form.email }}{% if form.email.errors %}<div class="field-error">{{ form.email.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap">{{ form.institutional_id.label_tag }}{{ form.institutional_id }}{% if form.institutional_id.errors %}<div class="field-error">{{ form.institutional_id.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">{{ form.institutional_id.label_tag }}{{ form.institutional_id }}{% if form.institutional_id.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted)">{{ form.institutional_id.help_text }}</div>{% endif %}{% if form.institutional_id.errors %}<div class="field-error">{{ form.institutional_id.errors.0 }}</div>{% endif %}</div>
                         <div class="row g-2">
                             <div class="col-6"><div class="field-wrap">{{ form.first_name.label_tag }}{{ form.first_name }}{% if form.first_name.errors %}<div class="field-error">{{ form.first_name.errors.0 }}</div>{% endif %}</div></div>
                             <div class="col-6"><div class="field-wrap">{{ form.last_name.label_tag }}{{ form.last_name }}{% if form.last_name.errors %}<div class="field-error">{{ form.last_name.errors.0 }}</div>{% endif %}</div></div>
                         </div>
                         <div class="field-wrap">{{ form.role.label_tag }}{{ form.role }}{% if form.role.errors %}<div class="field-error">{{ form.role.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap">{{ form.phone.label_tag }}{{ form.phone }}{% if form.phone.help_text %}<div class="help">{{ form.phone.help_text }}</div>{% endif %}{% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">{{ form.phone.label_tag }}{{ form.phone }}{% if form.phone.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted)">{{ form.phone.help_text }}</div>{% endif %}{% if form.phone.errors %}<div class="field-error">{{ form.phone.errors.0 }}</div>{% endif %}</div>
                         <div class="field-wrap">{{ form.password1.label_tag }}{{ form.password1 }}{% if form.password1.errors %}<div class="field-error">{{ form.password1.errors.0 }}</div>{% endif %}</div>
                         <div class="field-wrap">{{ form.password2.label_tag }}{{ form.password2 }}{% if form.password2.errors %}<div class="field-error">{{ form.password2.errors.0 }}</div>{% endif %}</div>
                         <div class="wizard-actions">
-                            <button type="button" class="btn btn-primary" onclick="wizardNext()">Next</button>
+                            <button type="button" class="btn btn-primary" onclick="wizardNext(1)">Next <i class="bi bi-arrow-right"></i></button>
                             <a href="{% url 'dashboard:manage_users' %}" class="btn btn-ghost">Cancel</a>
                         </div>
                     </div>
@@ -72,61 +123,84 @@
                     {# ── Step 2: Consent & authentication method ── #}
                     <div class="wizard-step" data-step="2">
                         <div class="wizard-step-title"><i class="bi bi-shield-check"></i> Step 2 — Consent & authentication</div>
-                        <div class="field-wrap">{{ form.auth_method.label_tag }}{% if form.auth_method.help_text %}<div class="help">{{ form.auth_method.help_text }}</div>{% endif %}{{ form.auth_method }}{% if form.auth_method.errors %}<div class="field-error">{{ form.auth_method.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_biometric }}<label for="{{ form.consent_biometric.id_for_label }}">{{ form.consent_biometric.label }}</label></div>{% if form.consent_biometric.help_text %}<div class="help">{{ form.consent_biometric.help_text }}</div>{% endif %}{% if form.consent_biometric.errors %}<div class="field-error">{{ form.consent_biometric.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.consent_rfid }}<label for="{{ form.consent_rfid.id_for_label }}">{{ form.consent_rfid.label }}</label></div>{% if form.consent_rfid.help_text %}<div class="help">{{ form.consent_rfid.help_text }}</div>{% endif %}{% if form.consent_rfid.errors %}<div class="field-error">{{ form.consent_rfid.errors.0 }}</div>{% endif %}</div>
-                        <div class="field-wrap"><div class="checkbox-wrap">{{ form.data_retention }}<label for="{{ form.data_retention.id_for_label }}">{{ form.data_retention.label }}</label></div>{% if form.data_retention.help_text %}<div class="help">{{ form.data_retention.help_text }}</div>{% endif %}{% if form.data_retention.errors %}<div class="field-error">{{ form.data_retention.errors.0 }}</div>{% endif %}</div>
+                        <div class="field-wrap">
+                            {{ form.auth_method.label_tag }}
+                            {% if form.auth_method.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted);margin-bottom:.4rem">{{ form.auth_method.help_text }}</div>{% endif %}
+                            {{ form.auth_method }}
+                            {% if form.auth_method.errors %}<div class="field-error">{{ form.auth_method.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="field-wrap">
+                            <div class="checkbox-wrap">{{ form.consent_biometric }}<label for="{{ form.consent_biometric.id_for_label }}" style="margin-bottom:0;font-weight:500">{{ form.consent_biometric.label }}</label></div>
+                            {% if form.consent_biometric.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted);margin-top:.3rem">{{ form.consent_biometric.help_text }}</div>{% endif %}
+                            {% if form.consent_biometric.errors %}<div class="field-error">{{ form.consent_biometric.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="field-wrap">
+                            <div class="checkbox-wrap">{{ form.consent_rfid }}<label for="{{ form.consent_rfid.id_for_label }}" style="margin-bottom:0;font-weight:500">{{ form.consent_rfid.label }}</label></div>
+                            {% if form.consent_rfid.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted);margin-top:.3rem">{{ form.consent_rfid.help_text }}</div>{% endif %}
+                            {% if form.consent_rfid.errors %}<div class="field-error">{{ form.consent_rfid.errors.0 }}</div>{% endif %}
+                        </div>
+                        <div class="field-wrap">
+                            <div class="checkbox-wrap">{{ form.data_retention }}<label for="{{ form.data_retention.id_for_label }}" style="margin-bottom:0;font-weight:500">{{ form.data_retention.label }}</label></div>
+                            {% if form.data_retention.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted);margin-top:.3rem">{{ form.data_retention.help_text }}</div>{% endif %}
+                            {% if form.data_retention.errors %}<div class="field-error" style="color:var(--color-danger)">{{ form.data_retention.errors.0 }}</div>{% endif %}
+                        </div>
                         <div class="wizard-actions">
-                            <button type="button" class="btn btn-ghost" onclick="wizardPrev()">Previous</button>
-                            <button type="button" class="btn btn-primary" onclick="wizardNext()">Next</button>
+                            <button type="button" class="btn btn-ghost" onclick="wizardGo(1)"><i class="bi bi-arrow-left"></i> Previous</button>
+                            <button type="button" class="btn btn-primary" onclick="wizardNext(2)">Next <i class="bi bi-arrow-right"></i></button>
                         </div>
                     </div>
 
-                    {# ── Step 3: Method-specific (RFID / Face / Fingerprint) ── #}
+                    {# ── Step 3: Method-specific enrollment ── #}
                     <div class="wizard-step" data-step="3">
                         <div class="wizard-step-title"><i class="bi bi-cpu"></i> Step 3 — Complete enrollment</div>
-                        <p class="mb-3" style="color:var(--color-text-secondary);font-size:0.95rem">Based on the chosen method, provide the data below or skip to complete later.</p>
+                        <p class="mb-3" style="color:var(--color-text-secondary);font-size:0.95rem">Provide enrollment data for the chosen method, or skip to complete later.</p>
 
                         <div class="method-panel" id="panel-rfid" data-method="rfid">
-                            <div class="field-wrap">{{ form.rfid_tag.label_tag }}{% if form.rfid_tag.help_text %}<div class="help">{{ form.rfid_tag.help_text }}</div>{% endif %}{{ form.rfid_tag }}{% if form.rfid_tag.errors %}<div class="field-error">{{ form.rfid_tag.errors.0 }}</div>{% endif %}</div>
+                            <div class="field-wrap">{{ form.rfid_tag.label_tag }}{% if form.rfid_tag.help_text %}<div class="help" style="font-size:.8rem;color:var(--color-text-muted);margin-bottom:.4rem">{{ form.rfid_tag.help_text }}</div>{% endif %}{{ form.rfid_tag }}{% if form.rfid_tag.errors %}<div class="field-error">{{ form.rfid_tag.errors.0 }}</div>{% endif %}</div>
                         </div>
+
                         <div class="method-panel" id="panel-face" data-method="face">
-                            <p style="margin:0 0 1rem 0;color:var(--color-text-secondary);font-size:0.92rem">Position the user's face in the frame and click Capture. The image will be stored when you complete enrollment.</p>
+                            <p style="margin:0 0 .75rem 0;color:var(--color-text-secondary);font-size:0.92rem">Position the user's face in the frame and click Capture. The face embedding will be computed and stored encrypted on the server.</p>
                             <div class="face-camera-wrap">
                                 <video id="faceVideo" autoplay playsinline muted style="width:100%;max-width:400px;height:300px;background:#111;border-radius:10px;object-fit:cover;display:block;"></video>
                                 <canvas id="faceCanvas" style="display:none;"></canvas>
                                 <input type="hidden" name="face_capture" id="faceCaptureInput" value="">
-                                <div class="wizard-actions" style="margin-top:1rem;">
+                                <div class="wizard-actions" style="margin-top:1rem">
                                     <button type="button" class="btn btn-outline-primary" id="btnStartFaceCam"><i class="bi bi-camera-video"></i> Start camera</button>
                                     <button type="button" class="btn btn-primary" id="btnCaptureFace" disabled><i class="bi bi-camera-fill"></i> Capture</button>
                                 </div>
-                                <p id="faceCaptureStatus" style="font-size:0.88rem;color:var(--color-success);margin:0.5rem 0 0;display:none;"><i class="bi bi-check-circle"></i> Face captured. You can capture again to replace.</p>
-                            </div>
-                        </div>
-                        <div class="method-panel" id="panel-fingerprint" data-method="fingerprint">
-                            <p style="margin:0;color:var(--color-text-muted)"><i class="bi bi-fingerprint"></i> Fingerprint enrollment will be available here in a future update.</p>
-                            <p style="margin:0.5rem 0 0;color:var(--color-text-secondary);font-size:0.9rem">You can skip this step and add fingerprint data later. Click <strong>Complete enrollment</strong> below to finish.</p>
-                            <div class="wizard-actions" style="margin-top:1rem">
-                                <button type="submit" class="btn btn-ghost"><i class="bi bi-skip-forward"></i> Skip — add later</button>
+                                <p id="faceCaptureStatus" style="font-size:0.88rem;color:var(--color-success);margin:.5rem 0 0;display:none"><i class="bi bi-check-circle"></i> Face captured. You can capture again to replace.</p>
+                                <p id="faceCaptureWarning" style="font-size:0.85rem;color:var(--color-warning);margin:.5rem 0 0;display:none"><i class="bi bi-exclamation-triangle"></i> No face captured — the user won't be able to authenticate by face until enrolled later.</p>
                             </div>
                         </div>
 
-                        <div class="wizard-actions">
-                            <button type="button" class="btn btn-ghost" onclick="wizardPrev()">Previous</button>
-                            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+                        <div class="method-panel" id="panel-fingerprint" data-method="fingerprint">
+                            <div style="display:flex;align-items:flex-start;gap:.75rem;padding:.75rem;background:var(--color-warning-bg);border-radius:10px;border:1px solid var(--color-warning)">
+                                <i class="bi bi-exclamation-triangle" style="color:var(--color-warning);margin-top:.1rem"></i>
+                                <div>
+                                    <div style="font-weight:600;color:var(--color-text-primary);font-size:.9rem">Fingerprint enrollment done on the Pi</div>
+                                    <p style="margin:.25rem 0 0;color:var(--color-text-secondary);font-size:.88rem">Create the account first, then run <code>fingerprint_enroll.py</code> on the Raspberry Pi to scan and register the user's fingerprint sensor slot.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="wizard-actions" style="margin-top:1.25rem">
+                            <button type="button" class="btn btn-ghost" onclick="wizardGo(2)"><i class="bi bi-arrow-left"></i> Previous</button>
+                            <button type="submit" class="btn btn-primary" id="btnSubmitEnroll">{{ submit_label }}</button>
                         </div>
                     </div>
                 </form>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+{% if not target_user %}
 <script>
 var currentStep = 1;
-var totalSteps = 3;
 
-function showStep(step) {
+function wizardGo(step) {
     currentStep = step;
     document.querySelectorAll('.wizard-step').forEach(function(el) {
         el.classList.toggle('active', parseInt(el.getAttribute('data-step')) === step);
@@ -137,29 +211,107 @@ function showStep(step) {
         if (n === step) el.classList.add('active');
         else if (n < step) el.classList.add('done');
     });
-    // Step 3: show method panel based on auth_method selection
     if (step === 3) {
-        var method = (document.querySelector('select[name=auth_method]') || {}).value || '';
-        document.querySelectorAll('.method-panel').forEach(function(panel) {
-            panel.classList.toggle('active', panel.getAttribute('data-method') === method);
-        });
-        if (method !== 'face') stopFaceCamera();
+        syncMethodPanel();
+        if (currentMethod() !== 'face') stopFaceCamera();
     } else {
         stopFaceCamera();
     }
+    window.scrollTo(0, 0);
 }
+
+function wizardNext(fromStep) {
+    // Client-side validation before advancing
+    if (fromStep === 1) {
+        var step1Fields = ['id_email', 'id_institutional_id', 'id_first_name', 'id_last_name', 'id_password1', 'id_password2'];
+        var ok = true;
+        step1Fields.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && !el.value.trim()) { el.focus(); ok = false; return; }
+        });
+        if (!ok) { alert('Please fill in all required fields before continuing.'); return; }
+    }
+    if (fromStep === 2) {
+        if (!document.getElementById('id_data_retention').checked) {
+            alert('You must acknowledge the data retention policy to continue.');
+            return;
+        }
+    }
+    if (fromStep < 3) wizardGo(fromStep + 1);
+}
+
+function currentMethod() {
+    var sel = document.querySelector('select[name=auth_method]');
+    return sel ? sel.value : '';
+}
+
+function syncMethodPanel() {
+    var method = currentMethod();
+    document.querySelectorAll('.method-panel').forEach(function(panel) {
+        panel.classList.toggle('active', panel.getAttribute('data-method') === method);
+    });
+    // Show warning on face panel if no capture yet
+    var warning = document.getElementById('faceCaptureWarning');
+    var status  = document.getElementById('faceCaptureStatus');
+    var input   = document.getElementById('faceCaptureInput');
+    if (warning && input) warning.style.display = (method === 'face' && !input.value) ? 'block' : 'none';
+    if (status  && input) status.style.display  = (method === 'face' &&  input.value) ? 'block' : 'none';
+}
+
+// Prevent submitting without face capture when method is face
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('enrollForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var method = currentMethod();
+            var capture = (document.getElementById('faceCaptureInput') || {}).value || '';
+            if (method === 'face' && !capture) {
+                var proceed = confirm('No face photo captured. The user will be unable to authenticate by face until enrolled via the Pi or profile later. Continue anyway?');
+                if (!proceed) { e.preventDefault(); return; }
+            }
+            stopFaceCamera();
+        });
+    }
+
+    var authSel = document.querySelector('select[name=auth_method]');
+    if (authSel) {
+        authSel.addEventListener('change', function() {
+            if (currentStep === 3) syncMethodPanel();
+            if (currentMethod() !== 'face') stopFaceCamera();
+        });
+    }
+
+    var btnStart = document.getElementById('btnStartFaceCam');
+    if (btnStart) btnStart.addEventListener('click', function() { faceStream ? stopFaceCamera() : startFaceCamera(); });
+    var btnCap = document.getElementById('btnCaptureFace');
+    if (btnCap) btnCap.addEventListener('click', captureFace);
+
+    // Show error summary box if the page reloaded due to validation error
+    {% if form.errors %}
+    var summary = document.getElementById('wizardErrorSummary');
+    if (summary) summary.style.display = 'block';
+    // Jump to the first step that has an error
+    var step1Fields = ['email','institutional_id','first_name','last_name','password1','password2','phone'];
+    var step2Fields = ['auth_method','consent_biometric','consent_rfid','data_retention'];
+    var hasStep1Err = step1Fields.some(function(f) { return document.querySelector('[name=' + f + ']') && document.querySelector('.field-error'); });
+    // Always stay on step 1 if it has errors, else go to step 2
+    {% for field in form %}{% if field.errors %}
+    (function(){
+        var name = '{{ field.html_name }}';
+        if (['auth_method','consent_biometric','consent_rfid','data_retention'].indexOf(name) >= 0) wizardGo(2);
+    })();
+    {% endif %}{% endfor %}
+    {% endif %}
+});
 
 var faceStream = null;
 
 function stopFaceCamera() {
-    if (faceStream) {
-        faceStream.getTracks().forEach(function(t) { t.stop(); });
-        faceStream = null;
-    }
+    if (faceStream) { faceStream.getTracks().forEach(function(t) { t.stop(); }); faceStream = null; }
     var v = document.getElementById('faceVideo');
-    if (v && v.srcObject) v.srcObject = null;
+    if (v) v.srcObject = null;
     var btn = document.getElementById('btnStartFaceCam');
-    if (btn) btn.textContent = ' Start camera';
+    if (btn) btn.innerHTML = '<i class="bi bi-camera-video"></i> Start camera';
     var cap = document.getElementById('btnCaptureFace');
     if (cap) cap.disabled = true;
 }
@@ -177,57 +329,23 @@ function startFaceCamera() {
             var btn = document.getElementById('btnStartFaceCam');
             if (btn) btn.innerHTML = '<i class="bi bi-stop-circle"></i> Stop camera';
         })
-        .catch(function(err) {
-            console.error('Camera error:', err);
-            alert('Could not access the camera. Please allow camera permission and try again.');
-        });
+        .catch(function() { alert('Could not access the camera. Please allow camera permission and try again.'); });
 }
 
 function captureFace() {
     var video = document.getElementById('faceVideo');
     var canvas = document.getElementById('faceCanvas');
     var input = document.getElementById('faceCaptureInput');
-    var status = document.getElementById('faceCaptureStatus');
     if (!video || !canvas || !input || !video.srcObject) return;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    var ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
+    canvas.getContext('2d').drawImage(video, 0, 0);
     input.value = canvas.toDataURL('image/jpeg', 0.85);
+    var status = document.getElementById('faceCaptureStatus');
     if (status) status.style.display = 'block';
+    var warning = document.getElementById('faceCaptureWarning');
+    if (warning) warning.style.display = 'none';
 }
-
-function wizardNext() {
-    if (currentStep < totalSteps) showStep(currentStep + 1);
-}
-
-function wizardPrev() {
-    if (currentStep > 1) showStep(currentStep - 1);
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelector('select[name=auth_method]').addEventListener('change', function() {
-        if (currentStep === 3) {
-            var method = this.value;
-            document.querySelectorAll('.method-panel').forEach(function(panel) {
-                panel.classList.toggle('active', panel.getAttribute('data-method') === method);
-            });
-            if (method !== 'face') stopFaceCamera();
-        }
-    });
-
-    var btnStart = document.getElementById('btnStartFaceCam');
-    if (btnStart) {
-        btnStart.addEventListener('click', function() {
-            if (faceStream) stopFaceCamera();
-            else startFaceCamera();
-        });
-    }
-    var btnCapture = document.getElementById('btnCaptureFace');
-    if (btnCapture) btnCapture.addEventListener('click', captureFace);
-
-    var form = document.getElementById('enrollForm');
-    if (form) form.addEventListener('submit', function() { stopFaceCamera(); });
-});
 </script>
+{% endif %}
 {% endblock %}

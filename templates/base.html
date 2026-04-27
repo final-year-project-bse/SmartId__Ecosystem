@@ -1,5 +1,4 @@
 {% load static %}
-{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -546,9 +545,11 @@
         <div class="sb-label">Administration</div>
         <a href="{% url 'dashboard:analytics' %}" class="sb-link {% block sb_analytics %}{% endblock %}"><i class="bi bi-activity"></i> Analytics</a>
         <a href="{% url 'dashboard:manage_users' %}" class="sb-link {% block sb_users %}{% endblock %}"><i class="bi bi-people"></i> User Management</a>
-<a href="{% url 'dashboard:manage_locations' %}" class="sb-link {% block sb_locations %}{% endblock %}"><i class="bi bi-pin-map"></i> Locations</a>
+        <a href="{% url 'dashboard:manage_departments' %}" class="sb-link {% block sb_departments %}{% endblock %}"><i class="bi bi-diagram-3"></i> Departments</a>
+        <a href="{% url 'dashboard:manage_locations' %}" class="sb-link {% block sb_locations %}{% endblock %}"><i class="bi bi-pin-map"></i> Locations</a>
     <a href="{% url 'dashboard:timetable_master' %}" class="sb-link {% block sb_timetable_master %}{% endblock %}"><i class="bi bi-calendar2-week"></i> Master Timetable</a>
     <a href="{% url 'dashboard:system_health' %}" class="sb-link {% block sb_system_health %}{% endblock %}"><i class="bi bi-cpu"></i> System Health</a>
+    <a href="{% url 'dashboard:fingerprint_slots' %}" class="sb-link {% block sb_fingerprint_slots %}{% endblock %}"><i class="bi bi-fingerprint"></i> Fingerprint Slots</a>
         <a href="{% url 'dashboard:privacy_compliance' %}" class="sb-link {% block sb_privacy %}{% endblock %}"><i class="bi bi-shield-check"></i> Privacy Compliance</a>
         <a href="{% url 'dashboard:alert_rules' %}" class="sb-link {% block sb_alerts %}{% endblock %}"><i class="bi bi-bell-slash"></i> Alert Rules</a>
         {% endif %}
@@ -558,7 +559,9 @@
             <i class="bi bi-bell"></i> Notifications
             {% if unread_notification_count %}<span class="notif-count">{{ unread_notification_count }}</span>{% endif %}
         </a>
+        {% if user.role != 'parent' %}
         <a href="{% url 'users:profile' %}" class="sb-link {% block sb_profile %}{% endblock %}"><i class="bi bi-person-circle"></i> Profile</a>
+        {% endif %}
     </nav>
     <div class="sb-bottom">
         <a href="{% url 'users:logout' %}" class="sb-link"><i class="bi bi-box-arrow-left"></i> Logout</a>

@@ -27,10 +27,14 @@ urlpatterns = [
     path('mark-attendance/', views.mark_attendance, name='mark_attendance'),
     
     # ── Device (Pi) Face + RFID attendance ──
+    path('device/heartbeat/', device_views.device_heartbeat, name='device_heartbeat'),
     path('device/active-session/', device_views.device_active_session, name='device_active_session'),
     path('device/rfid-scan/', device_views.device_rfid_scan, name='device_rfid_scan'),
     path('device/face-match/', device_views.device_face_match, name='device_face_match'),
     path('device/offline-batch/', device_views.device_offline_batch, name='device_offline_batch'),
+    # ── Device (Pi) Fingerprint attendance ──
+    path('device/fingerprint-enroll/', device_views.device_fingerprint_enroll, name='device_fingerprint_enroll'),
+    path('device/fingerprint-scan/', device_views.device_fingerprint_scan, name='device_fingerprint_scan'),
     
     # ── Student Stats ──
     path('student-stats/', views.student_stats, name='student_stats_self'),

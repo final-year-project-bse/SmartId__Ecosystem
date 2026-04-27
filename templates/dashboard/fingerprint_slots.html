@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Fingerprint Slots - SmartID{% endblock %}
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+    <div>
+        <h1><i class="bi bi-fingerprint"></i> Fingerprint Sensor Slots</h1>
+        <p>View and manage enrolled fingerprint slots across all registered devices.</p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-12 col-sm-6 col-md-5">
+                <label class="form-label">Filter by Device</label>
+                <select name="device" class="form-select">
+                    <option value="">All Devices</option>
+                    {% for dev in devices %}
+                        <option value="{{ dev.pk }}" {% if device_filter == dev.pk|stringformat:"s" %}selected{% endif %}>{{ dev.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-3">
+                <button type="submit" class="btn btn-outline-primary w-100 btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Slot #</th>
+                        <th>User</th>
+                        <th>Device</th>
+                        <th>Enrolled</th>
+                        <th class="text-end" style="padding-right:1.25rem">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in slots %}
+                    <tr>
+                        <td><code style="font-size:0.85rem">{{ slot.slot_position }}</code></td>
+                        <td>
+                            <div style="font-weight:600;font-size:0.88rem;color:var(--color-text-primary)">{{ slot.user.get_full_name }}</div>
+                            <div style="font-size:0.78rem;color:var(--color-text-muted)">{{ slot.user.email }} &middot; <code style="font-size:0.72rem">{{ slot.user.institutional_id }}</code></div>
+                        </td>
+                        <td>
+                            <span style="font-size:0.85rem;color:var(--color-text-secondary)"><i class="bi bi-cpu"></i> {{ slot.device.name }}</span>
+                        </td>
+                        <td style="font-size:0.82rem;color:var(--color-text-muted);white-space:nowrap">{{ slot.enrolled_at|date:"M d, Y H:i" }}</td>
+                        <td class="text-end" style="padding-right:1.25rem">
+                            <form method="post" action="{% url 'dashboard:delete_fingerprint_slot' slot.pk %}" class="d-inline" onsubmit="return confirm('Remove fingerprint slot {{ slot.slot_position }} for {{ slot.user.get_full_name }}? The user will need to re-enroll.')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-ghost btn-sm" title="Remove Slot" style="color:var(--color-danger)"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-fingerprint"></i></div>
+                                <p>No fingerprint slots enrolled{% if device_filter %} for this device{% endif %}. Use the Pi enrollment script to add users.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

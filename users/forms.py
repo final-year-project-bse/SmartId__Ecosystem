@@ -220,3 +220,251 @@ class ProfileEditForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'phone')
+
+
+# ---------------------------------------------------------------------------
+# Role-specific enrollment forms (redesigned enrollment system)
+# ---------------------------------------------------------------------------
+
+def _dept_choices():
+    """Return active department queryset for use in department dropdowns."""
+    from attendance.models import Department
+    return Department.objects.filter(is_active=True).order_by('name')
+
+
+class _BasePasswordMixin(forms.Form):
+    """Shared password fields for all role forms."""
+    password1 = forms.CharField(label='Password', widget=forms.PasswordInput(attrs={'placeholder': 'Set password'}))
+    password2 = forms.CharField(label='Confirm password', widget=forms.PasswordInput(attrs={'placeholder': 'Confirm password'}))
+
+    def clean_password2(self):
+        p1 = self.cleaned_data.get('password1', '')
+        p2 = self.cleaned_data.get('password2', '')
+        if p1 and p2 and p1 != p2:
+            raise forms.ValidationError('Passwords do not match.')
+        if p1:
+            validate_password(p1)
+        return p2
+
+    def set_password_on(self, user):
+        user.set_password(self.cleaned_data['password1'])
+        user.save(update_fields=['password'])
+
+
+class _BaseConsentMixin(forms.Form):
+    """Shared consent fields."""
+    consent_biometric = forms.BooleanField(required=False, label='I consent to biometric data capture (face / fingerprint)')
+    consent_rfid = forms.BooleanField(required=False, label='I consent to RFID card data storage')
+    data_retention = forms.BooleanField(required=True, label='I acknowledge the data retention and deletion policy')
+
+
+class StudentEnrollForm(_BasePasswordMixin, _BaseConsentMixin, forms.ModelForm):
+    """
+    Enroll a student. Attendance method is auto-assigned by gender:
+      Male   → RFID (primary) + Face Recognition (secondary)
+      Female → RFID (primary) + Fingerprint (secondary)
+    """
+    gender = forms.ChoiceField(
+        choices=[('', '— Select —'), ('male', 'Male'), ('female', 'Female')],
+        label='Gender',
+    )
+    age = forms.IntegerField(min_value=1, max_value=100, label='Age')
+    department = forms.ModelChoiceField(queryset=None, label='Department', empty_label='— Select department —')
+    parent_contact = forms.CharField(max_length=20, label='Parent / Guardian Contact', required=False,
+                                     widget=forms.TextInput(attrs={'placeholder': '+92-XXX-XXXXXXX'}))
+
+    class Meta:
+        model = User
+        fields = ('institutional_id', 'first_name', 'last_name', 'email', 'phone', 'age', 'gender', 'department', 'parent_contact')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['department'].queryset = _dept_choices()
+        self.fields['institutional_id'].label = 'Registration Number'
+        self.fields['institutional_id'].help_text = 'Format: XX00-XXX-000 (e.g. FA22-BSE-069)'
+        self.fields['email'].required = True
+
+    def clean_institutional_id(self):
+        val = validate_registration_number(self.cleaned_data.get('institutional_id', ''))
+        if User.objects.filter(institutional_id=val).exists():
+            raise forms.ValidationError('A student with this registration number already exists.')
+        return val
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('A user with this email already exists.')
+        return email
+
+    def clean_gender(self):
+        val = self.cleaned_data.get('gender', '')
+        if not val:
+            raise forms.ValidationError('Please select gender.')
+        return val
+
+    def clean(self):
+        data = super().clean()
+        gender = data.get('gender')
+        # Consent requirements for 2-factor methods (both RFID + biometric)
+        if not data.get('consent_rfid'):
+            raise forms.ValidationError('RFID consent is required — RFID is used to identify the student.')
+        if not data.get('consent_biometric'):
+            raise forms.ValidationError('Biometric consent is required — face/fingerprint is used to confirm identity.')
+        return data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = User.Role.STUDENT
+        user.gender = self.cleaned_data['gender']
+        user.age = self.cleaned_data['age']
+        user.department = self.cleaned_data.get('department')
+        user.parent_contact = self.cleaned_data.get('parent_contact', '')
+        user.set_password(self.cleaned_data['password1'])
+        if commit:
+            user.save()
+        return user
+
+
+class TeacherEnrollForm(_BasePasswordMixin, _BaseConsentMixin, forms.ModelForm):
+    """
+    Enroll a professor/teacher. Attendance method auto-assigned by gender:
+      Male   → Face Recognition (timetable identifies, face confirms)
+      Female → RFID only
+    """
+    gender = forms.ChoiceField(
+        choices=[('', '— Select —'), ('male', 'Male'), ('female', 'Female')],
+        label='Gender',
+    )
+    department = forms.ModelChoiceField(queryset=None, label='Department', empty_label='— Select department —')
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'phone', 'gender', 'department')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['department'].queryset = _dept_choices()
+        self.fields['email'].required = True
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('A user with this email already exists.')
+        return email
+
+    def clean_gender(self):
+        val = self.cleaned_data.get('gender', '')
+        if not val:
+            raise forms.ValidationError('Please select gender.')
+        return val
+
+    def clean(self):
+        data = super().clean()
+        gender = data.get('gender')
+        if gender == 'male' and not data.get('consent_biometric'):
+            raise forms.ValidationError('Biometric consent is required for male teachers — face recognition is used.')
+        if gender == 'female' and not data.get('consent_rfid'):
+            raise forms.ValidationError('RFID consent is required for female teachers.')
+        return data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = User.Role.PROFESSOR
+        user.gender = self.cleaned_data['gender']
+        user.department = self.cleaned_data.get('department')
+        # Auto-generate institutional_id for teachers (email-based)
+        base = self.cleaned_data['email'].split('@')[0][:20].upper()
+        inst_id = f'TCH-{base}'
+        counter = 1
+        while User.objects.filter(institutional_id=inst_id).exists():
+            inst_id = f'TCH-{base}-{counter}'
+            counter += 1
+        user.institutional_id = inst_id
+        user.set_password(self.cleaned_data['password1'])
+        if commit:
+            user.save()
+        return user
+
+
+class ParentEnrollForm(_BasePasswordMixin, forms.ModelForm):
+    """
+    Enroll a parent. Linked to student by registration number.
+    Gets dashboard access + email/SMS attendance reports.
+    """
+    student_reg_number = forms.CharField(
+        max_length=50, label='Student Registration Number',
+        help_text='The registration number of the student this parent is linked to.',
+    )
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'phone')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].required = True
+        self.fields['phone'].label = 'Parent Phone Number'
+        self.fields['phone'].required = True
+
+    def clean_student_reg_number(self):
+        reg = self.cleaned_data.get('student_reg_number', '').strip().upper()
+        if not User.objects.filter(institutional_id=reg, role=User.Role.STUDENT).exists():
+            raise forms.ValidationError('No enrolled student found with this registration number.')
+        return reg
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('A user with this email already exists.')
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = User.Role.PARENT
+        # Auto-generate institutional_id for parents
+        base = self.cleaned_data['email'].split('@')[0][:20].upper()
+        inst_id = f'PAR-{base}'
+        counter = 1
+        while User.objects.filter(institutional_id=inst_id).exists():
+            inst_id = f'PAR-{base}-{counter}'
+            counter += 1
+        user.institutional_id = inst_id
+        user.set_password(self.cleaned_data['password1'])
+        if commit:
+            user.save()
+        return user
+
+
+class AdminEnrollForm(_BasePasswordMixin, forms.ModelForm):
+    """
+    Enroll an admin account. Only existing admins can do this.
+    Attendance method: Fingerprint only (enrolled via Pi hardware).
+    """
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'phone')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].required = True
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email', '')
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('A user with this email already exists.')
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = User.Role.ADMIN
+        base = self.cleaned_data['email'].split('@')[0][:20].upper()
+        inst_id = f'ADM-{base}'
+        counter = 1
+        while User.objects.filter(institutional_id=inst_id).exists():
+            inst_id = f'ADM-{base}-{counter}'
+            counter += 1
+        user.institutional_id = inst_id
+        user.set_password(self.cleaned_data['password1'])
+        if commit:
+            user.save()
+        return user

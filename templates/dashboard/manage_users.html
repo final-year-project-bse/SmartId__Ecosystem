@@ -99,6 +99,12 @@
                                 {% if u.role == 'parent' %}
                                 <a href="{% url 'dashboard:manage_parent_links' u.pk %}" class="btn btn-ghost btn-sm" title="Link Children" style="color:var(--color-info)"><i class="bi bi-link-45deg"></i></a>
                                 {% endif %}
+                                {% if u != request.user and not u.is_superuser %}
+                                <form method="post" action="{% url 'dashboard:delete_user' u.pk %}" class="d-inline" onsubmit="return confirm('Permanently delete {{ u.get_full_name }}? This cannot be undone.')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-ghost btn-sm" title="Delete User" style="color:var(--color-danger)"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
