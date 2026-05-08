@@ -3,8 +3,9 @@ User login, profile management, and auth method handling.
 Enrollment is now admin-controlled (see dashboard.views.create_user).
 """
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.views.generic import FormView
 from django.urls import reverse_lazy
@@ -133,6 +134,78 @@ def profile(request):
         'form': form,
         'auth_pref': auth_pref,
         'consent': consent,
+    })
+
+
+@login_required
+def professor_settings(request):
+    """Professor settings: view details, change password, theme."""
+    user = request.user
+    auth_pref = getattr(user, 'auth_method_preference', None)
+    pw_form = PasswordChangeForm(user=user)
+
+    if request.method == 'POST':
+        pw_form = PasswordChangeForm(user=user, data=request.POST)
+        if pw_form.is_valid():
+            pw_form.save()
+            update_session_auth_hash(request, pw_form.user)
+            messages.success(request, 'Password changed successfully.')
+            return redirect('users:professor_settings')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+
+    return render(request, 'users/professor_settings.html', {
+        'auth_pref': auth_pref,
+        'pw_form': pw_form,
+    })
+
+
+@login_required
+def admin_settings(request):
+    """Admin settings: view details, change password."""
+    user = request.user
+    auth_pref = getattr(user, 'auth_method_preference', None)
+    pw_form = PasswordChangeForm(user=user)
+
+    if request.method == 'POST':
+        pw_form = PasswordChangeForm(user=user, data=request.POST)
+        if pw_form.is_valid():
+            pw_form.save()
+            update_session_auth_hash(request, pw_form.user)
+            messages.success(request, 'Password changed successfully.')
+            return redirect('users:admin_settings')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+
+    return render(request, 'users/admin_settings.html', {
+        'auth_pref': auth_pref,
+        'pw_form': pw_form,
+    })
+
+
+@login_required
+def student_settings(request):
+    """Student settings: view all details + change password."""
+    user = request.user
+    auth_pref = getattr(user, 'auth_method_preference', None)
+    consent = getattr(user, 'consent', None)
+
+    pw_form = PasswordChangeForm(user=user)
+
+    if request.method == 'POST':
+        pw_form = PasswordChangeForm(user=user, data=request.POST)
+        if pw_form.is_valid():
+            pw_form.save()
+            update_session_auth_hash(request, pw_form.user)
+            messages.success(request, 'Password changed successfully.')
+            return redirect('users:student_settings')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+
+    return render(request, 'users/student_settings.html', {
+        'auth_pref': auth_pref,
+        'consent': consent,
+        'pw_form': pw_form,
     })
 
 

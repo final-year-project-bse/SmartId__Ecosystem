@@ -4,68 +4,79 @@
 {% block content %}
 <div class="page-header">
     <h1><i class="bi bi-grid-1x2"></i> My Dashboard</h1>
-    <p>Welcome back, <strong>{{ user.get_full_name }}</strong>. Choose an action below to get started.</p>
+    <p>Welcome back, <strong>{{ user.get_full_name }}</strong>.</p>
 </div>
 
-<div class="shortcut-section">
-    <h2 class="shortcut-heading">What do you want to do?</h2>
-    <div class="row g-3 mb-4">
-        <div class="col-12 col-lg-6">
-            <div class="card shortcut-card" style="border-color:var(--color-info);background:var(--color-info-bg);">
-                <div class="card-body">
-                    <div class="shortcut-icon" style="background:var(--color-info);color:#fff"><i class="bi bi-info-circle"></i></div>
-                    <div class="shortcut-title">How is attendance recorded?</div>
-                    <div class="shortcut-desc">Attendance is recorded at the <strong>terminal</strong> using RFID, facial recognition, or fingerprint. If you have issues with the device or portal, ask your teacher to mark you present for that class.</div>
-                </div>
+{# ── Quick Actions ── #}
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'attendance:student_history' %}" class="card shortcut-card h-100">
+            <div class="card-body">
+                <div class="shortcut-icon" style="background:var(--color-primary-bg);color:var(--color-primary)"><i class="bi bi-clock-history"></i></div>
+                <div class="shortcut-title">Attendance History</div>
+                <div class="shortcut-desc">View all your attendance records</div>
             </div>
-        </div>
-        <div class="col-6 col-lg-3">
-            <a href="{% url 'attendance:student_stats' %}" class="card shortcut-card">
-                <div class="card-body">
-                    <div class="shortcut-icon" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-graph-up"></i></div>
-                    <div class="shortcut-title">My Statistics</div>
-                    <div class="shortcut-desc">View attendance % per course</div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-lg-3">
-            <a href="{% url 'attendance:student_timetable' %}" class="card shortcut-card">
-                <div class="card-body">
-                    <div class="shortcut-icon" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-calendar-week"></i></div>
-                    <div class="shortcut-title">Timetable</div>
-                    <div class="shortcut-desc">My class schedule</div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-lg-3">
-            <a href="{% url 'attendance:student_leaves' %}" class="card shortcut-card">
-                <div class="card-body">
-                    <div class="shortcut-icon" style="background:var(--color-warning-bg);color:var(--color-warning)"><i class="bi bi-journal-x"></i></div>
-                    <div class="shortcut-title">Leave Requests</div>
-                    <div class="shortcut-desc">Submit or view leave requests</div>
-                </div>
-            </a>
-        </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'attendance:student_stats' %}" class="card shortcut-card h-100">
+            <div class="card-body">
+                <div class="shortcut-icon" style="background:var(--color-success-bg);color:var(--color-success)"><i class="bi bi-graph-up"></i></div>
+                <div class="shortcut-title">My Statistics</div>
+                <div class="shortcut-desc">Attendance % per course</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'attendance:student_timetable' %}" class="card shortcut-card h-100">
+            <div class="card-body">
+                <div class="shortcut-icon" style="background:var(--color-info-bg);color:var(--color-info)"><i class="bi bi-calendar-week"></i></div>
+                <div class="shortcut-title">Timetable</div>
+                <div class="shortcut-desc">My class schedule</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'attendance:student_leaves' %}" class="card shortcut-card h-100">
+            <div class="card-body">
+                <div class="shortcut-icon" style="background:var(--color-warning-bg);color:var(--color-warning)"><i class="bi bi-journal-x"></i></div>
+                <div class="shortcut-title">Leave Requests</div>
+                <div class="shortcut-desc">Submit or view leave requests</div>
+            </div>
+        </a>
     </div>
 </div>
 
+{# ── Recent Attendance ── #}
 <div class="card">
-    <div class="card-body">
-        <div class="section-title"><i class="bi bi-clock-history"></i> Recent Attendance</div>
+    <div style="padding:0.9rem 1.25rem;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+        <div class="section-title mb-0"><i class="bi bi-clock-history"></i> Recent Attendance</div>
+        <a href="{% url 'attendance:student_history' %}" class="btn btn-ghost btn-sm" style="color:var(--color-primary);font-size:0.82rem">View all <i class="bi bi-arrow-right"></i></a>
+    </div>
+    <div class="card-body p-0">
         {% if records %}
         <div class="table-responsive">
             <table class="table mb-0">
-                <thead><tr><th>Date / Time</th><th>Location</th><th>Status</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th style="white-space:nowrap">Date / Time</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for r in records %}
                     <tr>
-                        <td style="white-space:nowrap">{{ r.marked_at|date:"M d, Y H:i" }}</td>
-                        <td>{{ r.location.name }} <span style="color:var(--color-text-muted);font-size:0.8rem">({{ r.location.code }})</span></td>
+                        <td style="white-space:nowrap;font-size:0.87rem;color:var(--color-text-secondary)">{{ r.marked_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <strong>{{ r.location.name }}</strong>
+                            <span style="color:var(--color-text-muted);font-size:0.78rem"> ({{ r.location.code }})</span>
+                        </td>
                         <td>
                             {% if r.status == 'on_time' %}
-                            <span class="status-badge" style="background:var(--color-success-bg);color:var(--color-success);font-size:.8rem">On time</span>
+                            <span class="role-badge student" style="font-size:.75rem">On Time</span>
                             {% else %}
-                            <span class="status-badge" style="background:var(--color-warning-bg);color:var(--color-warning);font-size:.8rem">Late</span>
+                            <span class="role-badge" style="background:var(--color-warning-bg);color:var(--color-warning);font-size:.75rem">Late</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -74,7 +85,10 @@
             </table>
         </div>
         {% else %}
-        <div class="empty-state"><div class="empty-icon"><i class="bi bi-calendar-x"></i></div><p>No attendance records yet.</p></div>
+        <div class="empty-state">
+            <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+            <p>No attendance records yet. Your records will appear here once the terminal marks you present.</p>
+        </div>
         {% endif %}
     </div>
 </div>

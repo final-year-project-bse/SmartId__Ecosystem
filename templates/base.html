@@ -1,10 +1,12 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" id="htmlRoot">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SmartID Ecosystem{% endblock %}</title>
+    <!-- Apply saved theme before paint to avoid flash -->
+    <script>(function(){var t=localStorage.getItem('smartid-theme');if(t==='dark')document.getElementById('htmlRoot').setAttribute('data-theme','dark');}());</script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -58,6 +60,43 @@
             --sidebar-w: 280px;
             --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        /* ── Dark mode overrides ── */
+        [data-theme="dark"] {
+            --color-bg-page:        #0F1117;
+            --color-bg-card:        #1A1D27;
+            --color-text-primary:   #F3F4F6;
+            --color-text-secondary: #D1D5DB;
+            --color-text-muted:     #6B7280;
+            --color-border:         #2D3347;
+            --color-border-light:   #222536;
+            --color-primary-bg:     rgba(108,78,235,0.14);
+            --color-primary-glow:   rgba(108,78,235,0.22);
+            --shadow-sm:            0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-md:            0 4px 12px rgba(0,0,0,0.35);
+            --shadow-lg:            0 10px 25px rgba(0,0,0,0.45);
+        }
+        [data-theme="dark"] .table { --bs-table-bg: transparent; --bs-table-striped-bg: rgba(255,255,255,0.03); color: var(--color-text-primary); }
+        [data-theme="dark"] .table thead th { border-color: var(--color-border); }
+        [data-theme="dark"] .table td, [data-theme="dark"] .table th { border-color: var(--color-border); }
+        [data-theme="dark"] .form-control, [data-theme="dark"] .form-select {
+            background: var(--color-bg-page); color: var(--color-text-primary);
+            border-color: var(--color-border);
+        }
+        [data-theme="dark"] .form-control::placeholder { color: var(--color-text-muted); }
+        [data-theme="dark"] .form-control:focus, [data-theme="dark"] .form-select:focus {
+            background: var(--color-bg-page); color: var(--color-text-primary);
+            border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-glow);
+        }
+        [data-theme="dark"] .alert-danger { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.3); }
+        [data-theme="dark"] .alert-success { background: rgba(34,197,94,0.15); color: #86efac; border-color: rgba(34,197,94,0.3); }
+        [data-theme="dark"] .alert-info { background: rgba(59,130,246,0.15); color: #93c5fd; border-color: rgba(59,130,246,0.3); }
+        [data-theme="dark"] .alert-warning { background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3); }
+        [data-theme="dark"] .dropdown-menu { background: var(--color-bg-card); border-color: var(--color-border); }
+        [data-theme="dark"] .dropdown-item { color: var(--color-text-primary); }
+        [data-theme="dark"] .dropdown-item:hover { background: var(--color-primary-bg); }
+        [data-theme="dark"] code { background: rgba(255,255,255,0.08); color: #c4b5fd; }
+        [data-theme="dark"] .modal-content { background: var(--color-bg-card); color: var(--color-text-primary); border-color: var(--color-border); }
 
         * { box-sizing: border-box; }
         html { font-size: 16px; -webkit-font-smoothing: antialiased; }
@@ -559,7 +598,13 @@
             <i class="bi bi-bell"></i> Notifications
             {% if unread_notification_count %}<span class="notif-count">{{ unread_notification_count }}</span>{% endif %}
         </a>
-        {% if user.role != 'parent' %}
+        {% if user.role == 'student' %}
+        <a href="{% url 'users:student_settings' %}" class="sb-link {% block sb_settings %}{% endblock %}"><i class="bi bi-gear"></i> Settings</a>
+        {% elif user.role == 'admin' %}
+        <a href="{% url 'users:admin_settings' %}" class="sb-link {% block sb_admin_settings %}{% endblock %}"><i class="bi bi-gear"></i> Settings</a>
+        {% elif user.role == 'professor' %}
+        <a href="{% url 'users:professor_settings' %}" class="sb-link {% block sb_prof_settings %}{% endblock %}"><i class="bi bi-gear"></i> Settings</a>
+        {% elif user.role != 'parent' %}
         <a href="{% url 'users:profile' %}" class="sb-link {% block sb_profile %}{% endblock %}"><i class="bi bi-person-circle"></i> Profile</a>
         {% endif %}
     </nav>
@@ -614,6 +659,8 @@
 <script>
 function toggleSidebar(){var s=document.getElementById('sidebar'),o=document.getElementById('sbOverlay');if(s){s.classList.toggle('open');o.classList.toggle('open');}}
 function closeSidebar(){var s=document.getElementById('sidebar'),o=document.getElementById('sbOverlay');if(s){s.classList.remove('open');o.classList.remove('open');}}
+function setTheme(t){document.getElementById('htmlRoot').setAttribute('data-theme',t);localStorage.setItem('smartid-theme',t);}
+function toggleTheme(){setTheme(document.getElementById('htmlRoot').getAttribute('data-theme')==='dark'?'light':'dark');}
 </script>
 {% block extra_js %}{% endblock %}
 </body>

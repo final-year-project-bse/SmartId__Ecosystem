@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+{% block title %}Settings - SmartID{% endblock %}
+{% block sb_prof_settings %}active{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-gear"></i> Settings</h1>
+    <p>Your account information, password, and display preferences.</p>
+</div>
+
+{% if messages %}
+<div class="mb-3">
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3 g-lg-4">
+
+    <!-- ── Left column: Account Info + Theme ── -->
+    <div class="col-12 col-lg-5 d-flex flex-column gap-3">
+
+        <!-- Account details -->
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title mb-3"><i class="bi bi-person-lines-fill"></i> Account Details</div>
+
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div style="width:60px;height:60px;border-radius:14px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;font-weight:800;flex-shrink:0">
+                        {{ user.first_name|truncatechars:1 }}{{ user.last_name|truncatechars:1 }}
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:1.1rem;color:var(--color-text-primary)">{{ user.get_full_name }}</div>
+                        <span class="role-badge professor">Professor</span>
+                    </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:0">
+
+                    <div style="display:flex;gap:0.75rem;padding:0.7rem 0;border-bottom:1px solid var(--color-border-light)">
+                        <i class="bi bi-envelope" style="color:var(--color-primary);margin-top:2px;width:18px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Email</div>
+                            <div style="font-weight:600;color:var(--color-text-primary)">{{ user.email }}</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:0.75rem;padding:0.7rem 0;border-bottom:1px solid var(--color-border-light)">
+                        <i class="bi bi-credit-card-2-front" style="color:var(--color-primary);margin-top:2px;width:18px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Staff ID</div>
+                            <div style="font-weight:600;color:var(--color-text-primary)"><code>{{ user.institutional_id }}</code></div>
+                        </div>
+                    </div>
+
+                    {% if user.department %}
+                    <div style="display:flex;gap:0.75rem;padding:0.7rem 0;border-bottom:1px solid var(--color-border-light)">
+                        <i class="bi bi-diagram-3" style="color:var(--color-primary);margin-top:2px;width:18px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Department</div>
+                            <div style="font-weight:600;color:var(--color-text-primary)">{{ user.department.name }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if user.phone %}
+                    <div style="display:flex;gap:0.75rem;padding:0.7rem 0;border-bottom:1px solid var(--color-border-light)">
+                        <i class="bi bi-telephone" style="color:var(--color-primary);margin-top:2px;width:18px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Phone</div>
+                            <div style="font-weight:600;color:var(--color-text-primary)">{{ user.phone }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if auth_pref %}
+                    <div style="display:flex;gap:0.75rem;padding:0.7rem 0;border-bottom:1px solid var(--color-border-light)">
+                        <i class="bi bi-shield-check" style="color:var(--color-primary);margin-top:2px;width:18px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Attendance Method</div>
+                            <div style="font-weight:600;color:var(--color-text-primary)">{{ auth_pref.get_method_display }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div style="display:flex;gap:0.75rem;padding:0.7rem 0">
+                        <i class="bi bi-calendar-check" style="color:var(--color-primary);margin-top:2px;width:18px;flex-shrink:0"></i>
+                        <div>
+                            <div style="font-size:0.72rem;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Member Since</div>
+                            <div style="font-weight:600;color:var(--color-text-primary)">{{ user.date_joined|date:"d M Y" }}</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme toggle -->
+        <div class="card">
+            <div class="card-body">
+                <div class="section-title mb-1"><i class="bi bi-palette"></i> Appearance</div>
+                <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:1.25rem">Switch between light and dark mode. Your preference is saved in your browser.</p>
+                <div style="display:flex;gap:0.75rem">
+                    <button onclick="setTheme('light')" id="btnLight"
+                        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0.5rem;border-radius:12px;border:2px solid var(--color-border);background:var(--color-bg-page);cursor:pointer;transition:all .2s">
+                        <div style="width:44px;height:44px;border-radius:10px;background:#F4F6F8;border:1.5px solid #E5E7EB;display:flex;align-items:center;justify-content:center">
+                            <i class="bi bi-sun-fill" style="color:#F59E0B;font-size:1.2rem"></i>
+                        </div>
+                        <span style="font-size:0.82rem;font-weight:600;color:var(--color-text-primary)">Light</span>
+                    </button>
+                    <button onclick="setTheme('dark')" id="btnDark"
+                        style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0.5rem;border-radius:12px;border:2px solid var(--color-border);background:var(--color-bg-page);cursor:pointer;transition:all .2s">
+                        <div style="width:44px;height:44px;border-radius:10px;background:#1A1D27;border:1.5px solid #2D3347;display:flex;align-items:center;justify-content:center">
+                            <i class="bi bi-moon-stars-fill" style="color:#A78BFA;font-size:1.2rem"></i>
+                        </div>
+                        <span style="font-size:0.82rem;font-weight:600;color:var(--color-text-primary)">Dark</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Right column: Change Password ── -->
+    <div class="col-12 col-lg-7">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="section-title mb-1"><i class="bi bi-lock"></i> Change Password</div>
+                <p style="font-size:0.88rem;color:var(--color-text-muted);margin-bottom:1.75rem">
+                    Enter your current password, then set a new one. Password must be at least 8 characters.
+                </p>
+
+                <form method="post" class="auth-form">
+                    {% csrf_token %}
+
+                    <div class="field-wrap">
+                        <label>Current Password</label>
+                        <div style="position:relative">
+                            <input type="password" name="{{ pw_form.old_password.html_name }}"
+                                   id="{{ pw_form.old_password.id_for_label }}"
+                                   class="form-control{% if pw_form.old_password.errors %} is-invalid{% endif %}"
+                                   placeholder="Enter current password" autocomplete="current-password">
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="togglePw('{{ pw_form.old_password.id_for_label }}')"
+                                style="position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);padding:0.25rem 0.5rem">
+                                <i class="bi bi-eye" id="eye_{{ pw_form.old_password.id_for_label }}"></i>
+                            </button>
+                        </div>
+                        {% for err in pw_form.old_password.errors %}
+                        <div style="color:var(--color-danger);font-size:0.83rem;margin-top:0.3rem">{{ err }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="field-wrap">
+                        <label>New Password</label>
+                        <div style="position:relative">
+                            <input type="password" name="{{ pw_form.new_password1.html_name }}"
+                                   id="{{ pw_form.new_password1.id_for_label }}"
+                                   class="form-control{% if pw_form.new_password1.errors %} is-invalid{% endif %}"
+                                   placeholder="Choose a new password" autocomplete="new-password">
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="togglePw('{{ pw_form.new_password1.id_for_label }}')"
+                                style="position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);padding:0.25rem 0.5rem">
+                                <i class="bi bi-eye" id="eye_{{ pw_form.new_password1.id_for_label }}"></i>
+                            </button>
+                        </div>
+                        {% for err in pw_form.new_password1.errors %}
+                        <div style="color:var(--color-danger);font-size:0.83rem;margin-top:0.3rem">{{ err }}</div>
+                        {% endfor %}
+                        <ul style="font-size:0.8rem;color:var(--color-text-muted);margin:0.5rem 0 0 1.1rem;padding:0">
+                            <li>At least 8 characters</li>
+                            <li>Cannot be entirely numeric</li>
+                        </ul>
+                    </div>
+
+                    <div class="field-wrap">
+                        <label>Confirm New Password</label>
+                        <div style="position:relative">
+                            <input type="password" name="{{ pw_form.new_password2.html_name }}"
+                                   id="{{ pw_form.new_password2.id_for_label }}"
+                                   class="form-control{% if pw_form.new_password2.errors %} is-invalid{% endif %}"
+                                   placeholder="Repeat new password" autocomplete="new-password">
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="togglePw('{{ pw_form.new_password2.id_for_label }}')"
+                                style="position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);padding:0.25rem 0.5rem">
+                                <i class="bi bi-eye" id="eye_{{ pw_form.new_password2.id_for_label }}"></i>
+                            </button>
+                        </div>
+                        {% for err in pw_form.new_password2.errors %}
+                        <div style="color:var(--color-danger);font-size:0.83rem;margin-top:0.3rem">{{ err }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" style="height:48px;font-size:1rem;font-weight:600;border-radius:10px;margin-top:0.5rem">
+                        <i class="bi bi-lock-fill"></i> Update Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function togglePw(id) {
+    var inp = document.getElementById(id);
+    var icon = document.getElementById('eye_' + id);
+    if (!inp) return;
+    if (inp.type === 'password') { inp.type = 'text'; icon.className = 'bi bi-eye-slash'; }
+    else { inp.type = 'password'; icon.className = 'bi bi-eye'; }
+}
+function highlightActiveTheme() {
+    var t = document.getElementById('htmlRoot').getAttribute('data-theme') || 'light';
+    var btnLight = document.getElementById('btnLight');
+    var btnDark  = document.getElementById('btnDark');
+    if (btnLight) btnLight.style.borderColor = t === 'light' ? 'var(--color-primary)' : 'var(--color-border)';
+    if (btnDark)  btnDark.style.borderColor  = t === 'dark'  ? 'var(--color-primary)' : 'var(--color-border)';
+}
+var _origSetTheme = window.setTheme;
+window.setTheme = function(t) { _origSetTheme(t); highlightActiveTheme(); };
+document.addEventListener('DOMContentLoaded', highlightActiveTheme);
+</script>
+{% endblock %}

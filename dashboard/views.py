@@ -133,9 +133,12 @@ def reports(request):
     status_filter = request.GET.get('status', '')
     if status_filter in (AttendanceRecord.Status.ON_TIME, AttendanceRecord.Status.LATE):
         records = records.filter(status=status_filter)
-    location_id = request.GET.get('location')
+    location_id = request.GET.get('location', '').strip()
     if location_id:
-        records = records.filter(location_id=location_id)
+        try:
+            records = records.filter(location_id=int(location_id))
+        except (ValueError, TypeError):
+            location_id = ''
 
     by_user = (
         records
@@ -167,8 +170,10 @@ def reports(request):
             ])
         return response
 
+    total_records = records.count()
     return render(request, 'dashboard/reports.html', {
         'records': records[:100],
+        'total_records': total_records,
         'by_user': by_user,
         'by_location': by_location,
         'period': period,
