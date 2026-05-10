@@ -192,7 +192,7 @@ courses = []
 for code, name, prof, loc, credits in courses_data:
     c, _ = Course.objects.get_or_create(
         code=code,
-        defaults={"name": name, "professor": prof, "location": loc, "credit_hours": credits, "is_active": True},
+        defaults={"name": name, "professor": prof, "location": loc, "is_active": True},
     )
     courses.append(c)
 print(f"  Courses: {len(courses)}")
